@@ -3183,7 +3183,7 @@ fi
 
 if test "$tmp_CXX" = "not found"; then
    OPP_PROBLEM_PACKAGES="$OPP_PROBLEM_PACKAGES g++"
-   as_fn_error $? "No C++ compiler found -- one is required to build OMNeT++/OMNEST, and also for model development." "$LINENO" 5
+   #as_fn_error $? "No C++ compiler found -- one is required to build OMNeT++/OMNEST, and also for model development." "$LINENO" 5
 fi
 
 if test "$TOOLCHAIN" = "mingw"; then
@@ -4845,9 +4845,9 @@ rm -f core conftest.err conftest.$ac_objext \
 
         fi
 
-        if test $qt_ok = no; then
-            as_fn_error $? "Cannot build Qt apps, probably due to missing or too old Qt packages. Make sure Qt development packages are installed and newer than Qt 5.4. You can disable Qtenv by setting the WITH_QTENV variable to \"no\" in configure.user." "$LINENO" 5
-        fi
+        #if test $qt_ok = no; then
+            #as_fn_error $? "Cannot build Qt apps, probably due to missing or too old Qt packages. Make sure Qt development packages are installed and newer than Qt 5.4. You can disable Qtenv by setting the WITH_QTENV variable to \"no\" in configure.user." "$LINENO" 5
+        #fi
     fi
 fi # WITH_QTENV
 
