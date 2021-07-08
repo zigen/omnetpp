@@ -77,7 +77,7 @@
 #include "messageanimator.h"
 #include "runselectiondialog.h"
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_DARWIN
 #include <ApplicationServices/ApplicationServices.h> // for the TransformProcessType magic on startup
 #endif
 
@@ -556,7 +556,7 @@ void Qtenv::doRun()
         static char *argv[] = { arg, nullptr };
         app = new QApplication(argc, argv);
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_DARWIN
         ProcessSerialNumber psn;
         GetCurrentProcess(&psn);
 
@@ -2483,12 +2483,12 @@ void Qtenv::initFonts()
     defaultFonts.logFont = getFirstAvailableFontFamily({ "DejaVu Sans Mono", "Courier New", "Consolas", "Terminal" }, 9);
     defaultFonts.timeFont = defaultFonts.boldFont;
     defaultFonts.timeFont.setPointSize(12);
-#elif defined(Q_OS_MAC)
+#elif defined(Q_OS_DARWIN)
     // Mac
     defaultFonts.boldFont = getFirstAvailableFontFamily({ "Lucida Grande", "Helvetica" }, 13);
     defaultFonts.canvasFont = defaultFonts.boldFont;
     defaultFonts.timelineFont = getFirstAvailableFontFamily({ "Arial Narrow" }, defaultFonts.boldFont.pointSize(), defaultFonts.boldFont);
-    defaultFonts.logFont = getFirstAvailableFontFamily({ "Monaco", "Courier" }, 13);
+    defaultFonts.logFont = getFirstAvailableFontFamily({  "Courier", "Monaco" }, 13);
     defaultFonts.timeFont = defaultFonts.boldFont;
     defaultFonts.timeFont.setPointSize(16);
 #else
