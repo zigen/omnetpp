@@ -1,3 +1,7 @@
+a.out.js
+*.so.js
+*_dbg.html
+*.wasm
 *.so
 *.a
 *.dylib
