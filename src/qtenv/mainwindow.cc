@@ -150,6 +150,20 @@ MainWindow::MainWindow(Qtenv *env, QWidget *parent) :
 
     connect(env->getDisplayUpdateController(), &DisplayUpdateController::playbackSpeedChanged,
             this, &MainWindow::updateSpeedSlider);
+    connect(env->getDisplayUpdateController(), &DisplayUpdateController::updateSimTimeLabelNeeded,
+            this, &MainWindow::updateSimTimeLabel);
+    connect(env->getDisplayUpdateController(), &DisplayUpdateController::updateEventNumLabelNeeded,
+            this, &MainWindow::updateEventNumLabel);
+    connect(env->getDisplayUpdateController(), &DisplayUpdateController::updateSimtimeDisplayNeeded,
+            this, &MainWindow::updateSimtimeDisplay);
+    connect(env->getDisplayUpdateController(), &DisplayUpdateController::updateStatusDisplayNeeded,
+            this, &MainWindow::updateStatusDisplay);
+    connect(env, &Qtenv::updateStatusDisplayNeeded,
+            this, &MainWindow::updateStatusDisplay);
+    connect(env, &Qtenv::updateSimtimeDisplayNeeded,
+            this, &MainWindow::updateSimtimeDisplay);
+    connect(env, &Qtenv::updateNetworkRunDisplayNeeded,
+            this, &MainWindow::updateNetworkRunDisplay);
 
     adjustSize();
 
@@ -490,6 +504,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::runSimulation(RunMode runMode)
 {
+   std::cout << "MainWindow::runSimulation(): this thread id: " << std::this_thread::get_id() << std::endl;
     if (isRunning()) {
         setGuiForRunmode(runMode);
         env->setSimulationRunMode(runMode);

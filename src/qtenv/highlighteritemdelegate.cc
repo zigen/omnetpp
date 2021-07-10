@@ -82,7 +82,8 @@ void HighlighterItemDelegate::paint(QPainter *painter, const QStyleOptionViewIte
     layout.setAdditionalFormats(formats);
 
     layout.setFont(option.font);
-    layout.setText(option.fontMetrics.elidedText(text, option.textElideMode, option.rect.width() - textOffset - 3));
+    // layout.setText(option.fontMetrics.elidedText(text, option.textElideMode, option.rect.width() - textOffset - 3));
+    layout.setText(text);
     // this is the standard layout procedure in a single line case
     layout.beginLayout();
     QTextLine line = layout.createLine();

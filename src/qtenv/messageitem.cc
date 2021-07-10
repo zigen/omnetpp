@@ -354,7 +354,9 @@ void MessageItem::updateLineItem()
 
     localLine = localLine.translated(sideOffset);
     arrowheadItem->setEndPoints(localLine.p1(), localLine.p2());
-    localLine.setLength(localLine.length()-arrowheadLength);
+    if (localLine.length()-arrowheadLength > 0) {
+        localLine.setLength(localLine.length()-arrowheadLength);
+    }
 
     lineItem->setLine(localLine);
     lineItem->setPen(pen);

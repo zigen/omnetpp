@@ -35,6 +35,7 @@
 #include <QFontDatabase>
 #include <QThread>
 #include <QPainter>
+#include <thread>
 
 #include "common/stringutil.h"
 #include "common/stringtokenizer.h"
@@ -91,6 +92,13 @@ void loadResource()
 {
     Q_INIT_RESOURCE(icons);
 }
+#ifdef __EMSCRIPTEN__
+#include <QtPlugin>
+Q_IMPORT_PLUGIN(QWasmIntegrationPlugin)
+Q_IMPORT_PLUGIN(QGifPlugin)
+Q_IMPORT_PLUGIN(QICOPlugin)
+Q_IMPORT_PLUGIN(QJpegPlugin)
+#endif
 
 namespace omnetpp {
 
@@ -492,7 +500,7 @@ double Qtenv::computeModelHoldEndTime()
     return holdEndTime;
 }
 
-Qtenv::Qtenv() : opt((QtenvOptions *&)EnvirBase::opt), icons(out)
+Qtenv::Qtenv() : opt((QtenvOptions *&)EnvirBase::opt), icons(out), simulation_thread()
 {
     // Note: ctor should only contain trivial initializations, because
     // the class may be instantiated only for the purpose of calling
@@ -544,6 +552,7 @@ void Qtenv::doRun()
         signal(SIGTERM, signalHandler);
 
         icons.loadImages(opt->imagePath.c_str());
+        std::cout << "Qtenv::doRun(): this thread id: " << std::this_thread::get_id() << std::endl;
 
         // we need to flush streams, otherwise output written from Tcl tends to overtake
         // output written from C++ so far, at least in the IDE's console view
@@ -601,6 +610,8 @@ void Qtenv::doRun()
         connect(&moduleLayouter, &ModuleLayouter::layoutVisualisationEnds, mainWindow, &MainWindow::exitLayoutingMode);
         connect(mainWindow, &MainWindow::closed, &moduleLayouter, &ModuleLayouter::stop);
         connect(mainWindow->getStopAction(), &QAction::triggered, &moduleLayouter, &ModuleLayouter::stop);
+        connect(displayUpdateController, &DisplayUpdateController::refreshInspectorsNeeded, this, &Qtenv::refreshInspectors);
+        connect(this, &Qtenv::refreshInspectorsNeeded, this, &Qtenv::refreshInspectors);
 
         QApplication::processEvents(); // Part of the hack for Apple Menu functionality, see a few lines up.
 
@@ -732,62 +743,70 @@ void Qtenv::runSimulation(RunMode mode, simtime_t until_time, eventnumber_t unti
     updateStatusDisplay();
     QApplication::processEvents();
 
-    startClock();
-    notifyLifecycleListeners(LF_ON_SIMULATION_RESUME);
-    try {
-        // funky while loop to handle switching to and from EXPRESS mode....
-        bool cont = true;
-        while (cont) {
-            if (runMode == RUNMODE_EXPRESS)
-                cont = doRunSimulationExpress();
-            else
-                cont = doRunSimulation();
+    std::thread th([=]{
+        std::cout << "Qtenv::runSimulation() in other thread: this thread id: " << std::this_thread::get_id() << std::endl;
+        startClock();
+        notifyLifecycleListeners(LF_ON_SIMULATION_RESUME);
+        try {
+            bool cont = true;
+            while (cont) {
+                if (runMode == RUNMODE_EXPRESS)
+                    cont = doRunSimulationExpress();
+                else
+                    cont = doRunSimulation();
+            }
+            
+            // funky while loop to handle switching to and from EXPRESS mode....
+            if (runMode != RUNMODE_NORMAL) { // in NORMAL mode, doRunSimulation() already calls refreshDisplay() after each event
+                messageAnimator->updateAnimations();
+                callRefreshDisplay();
+            }
+            simulationState = SIM_READY;
+            notifyLifecycleListeners(LF_ON_SIMULATION_PAUSE);
         }
-        if (runMode != RUNMODE_NORMAL) { // in NORMAL mode, doRunSimulation() already calls refreshDisplay() after each event
-            messageAnimator->updateAnimations();
-            callRefreshDisplay();
+        catch (cTerminationException& e) {
+            simulationState = SIM_TERMINATED;
+            stoppedWithTerminationException(e);
+            notifyLifecycleListeners(LF_ON_SIMULATION_SUCCESS);
+            displayException(e);
         }
-        simulationState = SIM_READY;
-        notifyLifecycleListeners(LF_ON_SIMULATION_PAUSE);
-    }
-    catch (cTerminationException& e) {
-        simulationState = SIM_TERMINATED;
-        stoppedWithTerminationException(e);
-        notifyLifecycleListeners(LF_ON_SIMULATION_SUCCESS);
-        displayException(e);
-    }
-    catch (std::exception& e) {
-        simulationState = SIM_ERROR;
-        stoppedWithException(e);
-        notifyLifecycleListeners(LF_ON_SIMULATION_ERROR);
-        displayException(e);
-    }
-    stopClock();
-    stopSimulationFlag = false;
+        catch (std::exception& e) {
+            simulationState = SIM_ERROR;
+            stoppedWithException(e);
+            notifyLifecycleListeners(LF_ON_SIMULATION_ERROR);
+            displayException(e);
+        }
+        stopClock();
+        stopSimulationFlag = false;
 
-    animating = true;
-    loggingEnabled = true;
-    recordEventlog = false;
-    runUntil.msg = nullptr;
+        animating = true;
+        loggingEnabled = true;
+        recordEventlog = false;
+        runUntil.msg = nullptr;
 
-    runMode = RUNMODE_NOT_RUNNING;
-    displayUpdateController->setRunMode(runMode);
-    if (!messageAnimator->isHoldActive())
-        messageAnimator->setMarkedModule(getSimulation()->guessNextModule());
+        runMode = RUNMODE_NOT_RUNNING;
+        displayUpdateController->setRunMode(runMode);
+        if (!messageAnimator->isHoldActive())
+            messageAnimator->setMarkedModule(getSimulation()->guessNextModule());
 
-    if (simulationState == SIM_TERMINATED) {
-        // call wrapper around simulation.callFinish() and simulation.endRun()
-        //
-        // NOTE: if the simulation is in SIM_ERROR, we don't want endRun() to be
-        // called yet, because we want to allow the user to force finish() from
-        // the GUI -- and finish() has to precede endRun(). endRun() will be called
-        // just before a new network gets set up, or on Qtenv shutdown.
-        //
-        finishSimulation();
-    }
+        if (simulationState == SIM_TERMINATED) {
+            // call wrapper around simulation.callFinish() and simulation.endRun()
+            //
+            // NOTE: if the simulation is in SIM_ERROR, we don't want endRun() to be
+            // called yet, because we want to allow the user to force finish() from
+            // the GUI -- and finish() has to precede endRun(). endRun() will be called
+            // just before a new network gets set up, or on Qtenv shutdown.
+            //
+            finishSimulation();
+        }
 
-    updateStatusDisplay();
-    callRefreshInspectors();
+        updateStatusDisplay();
+        callRefreshInspectors();
+        std::cout << "Qtenv::runSimulation() finished in sim thread: this thread id: " << std::this_thread::get_id() << std::endl;
+    });
+    th.detach();
+    std::cout << "Qtenv::runSimulation() finished in main thread: this thread id: " << std::this_thread::get_id() << std::endl;
+
 }
 
 void Qtenv::setSimulationRunMode(RunMode mode)
@@ -1131,8 +1150,8 @@ void Qtenv::newNetwork(const char *networkname)
     animating = true;  // affects how network graphics is drawn!
     messageAnimator->redrawMessages();
     messageAnimator->setMarkedModule(getSimulation()->guessNextModule());
-    updateNetworkRunDisplay();
-    updateStatusDisplay();
+    emit updateNetworkRunDisplayNeeded();
+    emit updateStatusDisplayNeeded();
     callRefreshInspectors();
 }
 
@@ -1347,7 +1366,7 @@ void Qtenv::refreshInspectors()
 void Qtenv::callRefreshInspectors()
 {
     try {
-        refreshInspectors();
+        emit refreshInspectorsNeeded();
     }
     catch (std::exception& e) {
         ASSERT(simulationState != SIM_ERROR); // the exception must have come from refreshDisplay calls in the model
@@ -1356,7 +1375,7 @@ void Qtenv::callRefreshInspectors()
         notifyLifecycleListeners(LF_ON_SIMULATION_ERROR);
         displayException(e);
         // have to call it again, this time it should not throw, because the state is now SIM_ERROR
-        refreshInspectors();
+        emit refreshInspectorsNeeded();
     }
 }
 
@@ -1407,18 +1426,18 @@ std::string Qtenv::getWindowTitle()
 
 void Qtenv::updateNetworkRunDisplay()
 {
-    mainWindow->updateNetworkRunDisplay();
+    emit updateNetworkRunDisplayNeeded();
     mainWindow->setWindowTitle(getWindowTitle().c_str());
 }
 
 void Qtenv::updateSimtimeDisplay()
 {
-    mainWindow->updateSimtimeDisplay();
+    emit updateSimtimeDisplayNeeded();
 }
 
 void Qtenv::updateStatusDisplay()
 {
-    mainWindow->updateStatusDisplay();
+    emit updateStatusDisplayNeeded();
 }
 
 void Qtenv::addEventToLog(cEvent *event)
@@ -1563,6 +1582,7 @@ void Qtenv::readOptions()
 
 void Qtenv::initialSetUpConfiguration()
 {
+    std::cout << "Qtenv::initialSetUpConfiguration(): this thread id: " << std::this_thread::get_id() << std::endl;
     if (checkRunning())
         return;
 

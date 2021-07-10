@@ -149,6 +149,12 @@ class QTENV_API DisplayUpdateController : public QObject
 signals:
     void playbackSpeedChanged(double speed);
     void runModeChanged(RunMode mode);
+    void updateAnimationsNeeded();
+    void updateSimTimeLabelNeeded();
+    void updateEventNumLabelNeeded();
+    void updateSimtimeDisplayNeeded();
+    void updateStatusDisplayNeeded();
+    void refreshInspectorsNeeded();
 
 public slots:
     void setPlaybackSpeed(double speed);
@@ -156,6 +162,7 @@ public slots:
 
     void pause() { if (pausedCount == 0) stopwatch.pause(); ++pausedCount; }
     void resume() { ASSERT(pausedCount > 0); --pausedCount; if (pausedCount == 0) stopwatch.resume(); }
+    void updateAnimations();
 
 public:
     DisplayUpdateController();

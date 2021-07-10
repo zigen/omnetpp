@@ -22,6 +22,7 @@
 #include <QMainWindow>
 #include <QModelIndex>
 #include "qtenv.h"
+#include <thread>
 
 class QGraphicsScene;
 class QStandardItem;
@@ -59,9 +60,6 @@ public:
     explicit MainWindow(Qtenv *env, QWidget *parent = 0);
     ~MainWindow();
 
-    void updateSimtimeDisplay();
-    void updateStatusDisplay();
-    void updateNetworkRunDisplay();
 
     QWidget *getMainInspectorArea() { return ui->mainArea; }
     QWidget *getObjectTreeArea() { return ui->treeView; }
@@ -164,6 +162,11 @@ private slots:
     void on_actionInspectByPointer_triggered();
     void on_actionRecordVideo_toggled(bool checked);
     void on_actionShowAnimationParams_toggled(bool checked);
+    void updateSimTimeLabel();
+    void updateEventNumLabel();
+    void updateSimtimeDisplay();
+    void updateStatusDisplay();
+    void updateNetworkRunDisplay();
 
 signals:
     void setNewNetwork();
@@ -208,8 +211,6 @@ private:
 
     int inputBox(const QString &title, const QString &prompt, QString &variable);
 
-    void updateSimTimeLabel();
-    void updateEventNumLabel();
 };
 
 } // namespace qtenv

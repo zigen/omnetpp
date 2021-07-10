@@ -29,6 +29,9 @@
 #include "common/unitconversion.h"
 #include "common/fileutil.h"
 #include "envir/speedometer.h"
+#include "qtenv.h"
+#include <iostream>
+#include <thread>
 
 #define emit
 
@@ -36,6 +39,9 @@ namespace omnetpp {
 using namespace common;
 namespace qtenv {
 
+void DisplayUpdateController::updateAnimations() {
+    msgAnim->updateAnimations();   
+}
 bool DisplayUpdateController::animateUntilNextEvent(bool onlyHold)
 {
     // if no more events, we lie that we reached it, so we notice that it's all over when we
@@ -68,7 +74,8 @@ bool DisplayUpdateController::animateUntilNextEvent(bool onlyHold)
         }
 
         // so the fresh animations can begin, and we get an updated animSpeed / holdTime
-        msgAnim->updateAnimations();
+        // msgAnim->updateAnimations();
+        emit updateAnimationsNeeded();
 
         double animationSpeed = getAnimationSpeed();
         double holdTime = qtenv->getRemainingAnimationHoldTime();
@@ -149,6 +156,7 @@ DisplayUpdateController::DisplayUpdateController()
 {
     runProfile.load("run");
     fastProfile.load("fast");
+    connect(this, &DisplayUpdateController::updateAnimationsNeeded, this, &DisplayUpdateController::updateAnimations);
 }
 
 double DisplayUpdateController::getAnimationSpeed() const
@@ -567,15 +575,16 @@ void DisplayUpdateController::renderFrame(bool record)
     if (dialog)
         dialog->displayMetrics();
 
-    msgAnim->updateAnimations();
+    // msgAnim->updateAnimations();
+    emit updateAnimationsNeeded();
 
-    qtenv->updateSimtimeDisplay();
-    qtenv->updateStatusDisplay();
+    emit updateSimtimeDisplayNeeded();
+    emit updateStatusDisplayNeeded();
 
     // We have to call the "unsafe" versions (without exception handling) here,
     // because we are in the simulation event loop, we have to let that handle it.
     qtenv->callRefreshDisplay();
-    qtenv->refreshInspectors();
+    emit refreshInspectorsNeeded();
 
     QApplication::processEvents();
 
