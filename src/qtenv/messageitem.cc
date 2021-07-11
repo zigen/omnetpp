@@ -20,6 +20,7 @@
 #include "qtenv.h"
 #include "graphicsitems.h"
 #include "omnetpp/cdisplaystring.h"
+#include <iostream>
 
 namespace omnetpp {
 namespace qtenv {
@@ -112,6 +113,7 @@ void MessageItemUtil::setupFromDisplayString(MessageItem *mi, cMessage *msg, dou
 MessageItem::MessageItem(QGraphicsItem *parent) :
     QGraphicsObject(parent)
 {
+    std::cout << "MessageItem::constructor: " << this << std::endl;
     textItem = new OutlinedTextItem(this);
     shapeItem = new QGraphicsEllipseItem(this);
     imageItem = new QGraphicsPixmapItem(this);
@@ -127,6 +129,7 @@ MessageItem::MessageItem(QGraphicsItem *parent) :
 
 MessageItem::~MessageItem()
 {
+    std::cout << "MessageItem::~MessageItem: " << this << std::endl;
     delete shapeItem;
     delete imageItem;
     delete textItem;

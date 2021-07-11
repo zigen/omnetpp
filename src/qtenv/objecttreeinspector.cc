@@ -23,6 +23,7 @@
 #include <QHeaderView>
 
 #include <QDebug>
+#include <mutex>
 
 #define emit
 
@@ -71,7 +72,7 @@ void ObjectTreeInspector::refresh()
 {
     // this will hold the pointers to the expanded nodes in the view
     QList<QVariant> expandedItems;
-
+    std::lock_guard<std::shared_mutex> lock(mtx);
     // getting the expanded nodes
     model->getExpandedItems(view, expandedItems);
     // updating the view to reflect the changed model
@@ -83,6 +84,7 @@ void ObjectTreeInspector::refresh()
 
 void ObjectTreeInspector::createContextMenu(QPoint pos)
 {
+    std::lock_guard<std::shared_mutex> lock(mtx);
     QModelIndex index = view->indexAt(pos);
     if (index.isValid()) {
         QVector<cObject *> objects;
@@ -96,6 +98,7 @@ void ObjectTreeInspector::createContextMenu(QPoint pos)
 void ObjectTreeInspector::onClick(QModelIndex index)
 {
     if (index.isValid()) {
+        std::lock_guard<std::shared_mutex> lock(mtx);
         cObject *object = model->getObjectFromIndex(index);
         emit selectionChanged(object);
     }
@@ -104,6 +107,7 @@ void ObjectTreeInspector::onClick(QModelIndex index)
 void ObjectTreeInspector::onDoubleClick(QModelIndex index)
 {
     if (index.isValid()) {
+        std::lock_guard<std::shared_mutex> lock(mtx);
         cObject *object = model->getObjectFromIndex(index);
         emit objectDoubleClicked(object);
     }

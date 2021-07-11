@@ -22,6 +22,7 @@
 #include "connectionitem.h"
 #include "graphicsitems.h"
 #include "common/stlutil.h"
+#include <iostream>
 
 namespace omnetpp {
 using namespace common;
@@ -162,6 +163,7 @@ void Animation::end()
     ASSERT2(state == PLAYING, str().toStdString().c_str());
     state = FINISHED;
 
+    std::cout << "Animation::end()" << std::endl;
     getQtenv()->getMessageAnimator()->clearHold(this);
 }
 
@@ -188,6 +190,7 @@ bool Animation::advance()
 
 Animation::~Animation()
 {
+    std::cout << "Animation::~Animation(): " << this  << std::endl;
     getQtenv()->getMessageAnimator()->clearHold(this);
 }
 

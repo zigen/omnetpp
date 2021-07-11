@@ -29,7 +29,7 @@
 #include <utility>
 #include <common/stlutil.h>
 #include <memory>
-
+#include <iostream>
 #define emit
 
 namespace omnetpp {
@@ -351,8 +351,11 @@ void MessageAnimator::updateAnimations()
 
 void MessageAnimator::clearMessages()
 {
-    for (auto i : messageItems)
+    std::cout << "MessageAnimator::clearMessages()" << std::endl;
+    for (auto i : messageItems) {
+        std::cout << "MessageAnimator::clearMessages() delete msg " << i.second << std::endl;
         delete i.second;
+    }
     messageItems.clear();
 }
 

@@ -18,6 +18,7 @@
 #define __OMNETPP_QTENV_OBJECTTREEINSPECTOR_H
 
 #include "inspector.h"
+#include <shared_mutex>
 #include <QModelIndex>
 
 class QTreeView;
@@ -33,6 +34,7 @@ class QTENV_API ObjectTreeInspector : public Inspector
 private:
     TreeItemModel *model;
     QTreeView *view;
+    std::shared_mutex mtx;
 
 private slots:
     void onClick(QModelIndex index);
