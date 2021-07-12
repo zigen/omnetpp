@@ -21,6 +21,7 @@
 #include "graphicsitems.h"
 #include "omnetpp/cdisplaystring.h"
 #include <iostream>
+#include <thread>
 
 namespace omnetpp {
 namespace qtenv {
@@ -130,6 +131,7 @@ MessageItem::MessageItem(QGraphicsItem *parent) :
 MessageItem::~MessageItem()
 {
     std::cout << "MessageItem::~MessageItem: " << this << std::endl;
+    setVisible(false);
     delete shapeItem;
     delete imageItem;
     delete textItem;
@@ -245,6 +247,7 @@ void MessageItem::setLine(const QLineF& line, bool showAsLine)
 
 QRectF MessageItem::boundingRect() const
 {
+    std::cout << "MessageItem::boundingRect(): " << this <<  ", on: " << std::this_thread::get_id() << std::endl;
     return lineItem->isVisible() ? lineItem->boundingRect() : shapeImageBoundingRect();
 }
 

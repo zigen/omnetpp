@@ -23,6 +23,7 @@
 #include "graphicsitems.h"
 #include "common/stlutil.h"
 #include <iostream>
+#include <thread>
 
 namespace omnetpp {
 using namespace common;
@@ -603,9 +604,10 @@ void MessageAnimation::begin()
 void MessageAnimation::end()
 {
     Animation::end();
-
-    for (auto p : messageItems)
+    for (auto p : messageItems) {
+        std::cout << "MessageAnimation::end() " << this << ", p.second: " << p.second << ", on thread: " << std::this_thread::get_id() << std::endl;
         p.second->setVisible(false);
+    }
 
     requestAnimationSpeed(0.0);
 }

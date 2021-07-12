@@ -293,6 +293,9 @@ class QTENV_API Qtenv : public QObject, public EnvirBase
       void updateSimtimeDisplayNeeded();
       void updateNetworkRunDisplayNeeded();
       void refreshInspectorsNeeded();
+      void updateAnimationsNeeded();
+      void redrawMessagesNeeded();
+      void clearMessagesNeeded();
 
   public slots:
       // on single click, only shows the object in the GenericObjectInspector
@@ -315,6 +318,9 @@ class QTENV_API Qtenv : public QObject, public EnvirBase
 
       void initialSetUpConfiguration();
       void refreshInspectors();
+      void updateAnimations();
+      void redrawMessages();
+      void clearMessages();
 
   protected:
       // redefined virtual functions from EnvirBase
