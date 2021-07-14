@@ -92,6 +92,7 @@ else
 $O/%$(A_LIB_SUFFIX) : $(OBJS)
 	@mkdir -p $O
 	@echo Creating static library: $@
+	$(Q)$(RM) -f $O/$(LIBNAME)$(A_LIB_SUFFIX) 
 	$(Q)$(AR) $(ARFLAG_OUT)$O/$(LIBNAME)$(A_LIB_SUFFIX) $(OBJS)
 	$(Q)$(RANLIB) $O/$(LIBNAME)$(A_LIB_SUFFIX)
 endif
