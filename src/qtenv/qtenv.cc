@@ -1619,10 +1619,19 @@ void Qtenv::initialSetUpConfiguration()
             dialog.show();
 #endif
 
+// #ifdef __EMSCRIPTEN__
+            // connect(
+            //     dialog, &QColorDialog::colorSelected,
+            //     [=](const QColor &selectedColor) {
+            //     qDebug() << Q_FUNC_INFO << selectedColor;
+            // });
+            // dialog.open();
+// #else
             // only show if needed, but if cancelled, stop.
             if (dialog.needsShowing() && !dialog.exec())
                 return;
 
+// #endif
             config = dialog.getConfigName();
             run = dialog.getRunNumber();
         }

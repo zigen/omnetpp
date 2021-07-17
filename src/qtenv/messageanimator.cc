@@ -352,9 +352,9 @@ void MessageAnimator::updateAnimations()
 
 void MessageAnimator::clearMessages()
 {
-    std::cout << "MessageAnimator::clearMessages() on " << std::this_thread::get_id() << std::endl;
+    // std::cout << "MessageAnimator::clearMessages() on " << std::this_thread::get_id() << std::endl;
     for (auto i : messageItems) {
-        std::cout << "MessageAnimator::clearMessages() delete msg " << i.second << std::endl;
+        // std::cout << "MessageAnimator::clearMessages() delete msg " << i.second << std::endl;
         i.second->setVisible(false);
         delete i.second;
     }

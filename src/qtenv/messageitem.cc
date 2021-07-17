@@ -247,7 +247,6 @@ void MessageItem::setLine(const QLineF& line, bool showAsLine)
 
 QRectF MessageItem::boundingRect() const
 {
-    std::cout << "MessageItem::boundingRect(): " << this <<  ", on: " << std::this_thread::get_id() << std::endl;
     return lineItem->isVisible() ? lineItem->boundingRect() : shapeImageBoundingRect();
 }
 
