@@ -110,6 +110,7 @@ endif
 $O/$(MAINLIBNAME)$(A_LIB_SUFFIX) : $O/main.o
 	@mkdir -p $O
 	@echo Creating static library: $@
+	$(Q)$(RM) -f $O/$(MAINLIBNAME)$(A_LIB_SUFFIX)
 	$(Q)$(AR) $(ARFLAG_OUT)$O/$(MAINLIBNAME)$(A_LIB_SUFFIX) $O/main.o
 	$(Q)$(RANLIB) $O/$(MAINLIBNAME)$(A_LIB_SUFFIX)
 
