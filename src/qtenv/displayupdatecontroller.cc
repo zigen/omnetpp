@@ -33,6 +33,10 @@
 #include <iostream>
 #include <thread>
 
+#ifdef __EMSCRIPTEN__
+#include "emscripten.h"
+#endif
+
 #define emit
 
 namespace omnetpp {
@@ -581,6 +585,10 @@ void DisplayUpdateController::renderFrame(bool record)
     qtenv->refreshInspectors();
 
     QApplication::processEvents();
+
+#ifdef __EMSCRIPTEN__
+    emscripten_sleep(-1);
+#endif
 
     lastGuiUpdateAt = now;
     lastFrameAt = now;
