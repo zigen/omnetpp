@@ -489,7 +489,6 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::runSimulation(RunMode runMode)
 {
-   std::cout << "MainWindow::runSimulation(): this thread id: " << std::this_thread::get_id() << std::endl;
     if (isRunning()) {
         setGuiForRunmode(runMode);
         env->setSimulationRunMode(runMode);

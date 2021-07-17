@@ -164,7 +164,6 @@ void Animation::end()
     ASSERT2(state == PLAYING, str().toStdString().c_str());
     state = FINISHED;
 
-    std::cout << "Animation::end()" << std::endl;
     getQtenv()->getMessageAnimator()->clearHold(this);
 }
 
@@ -191,7 +190,6 @@ bool Animation::advance()
 
 Animation::~Animation()
 {
-    std::cout << "Animation::~Animation(): " << this  << std::endl;
     getQtenv()->getMessageAnimator()->clearHold(this);
 }
 
@@ -605,7 +603,6 @@ void MessageAnimation::end()
 {
     Animation::end();
     for (auto p : messageItems) {
-        std::cout << "MessageAnimation::end() " << this << ", p.second: " << p.second << ", on thread: " << std::this_thread::get_id() << std::endl;
         p.second->setVisible(false);
     }
 
