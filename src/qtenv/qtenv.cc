@@ -500,7 +500,7 @@ double Qtenv::computeModelHoldEndTime()
     return holdEndTime;
 }
 
-Qtenv::Qtenv() : opt((QtenvOptions *&)EnvirBase::opt), icons(out), simulation_thread()
+Qtenv::Qtenv() : opt((QtenvOptions *&)EnvirBase::opt), icons(out)
 {
     // Note: ctor should only contain trivial initializations, because
     // the class may be instantiated only for the purpose of calling
@@ -610,11 +610,6 @@ void Qtenv::doRun()
         connect(&moduleLayouter, &ModuleLayouter::layoutVisualisationEnds, mainWindow, &MainWindow::exitLayoutingMode);
         connect(mainWindow, &MainWindow::closed, &moduleLayouter, &ModuleLayouter::stop);
         connect(mainWindow->getStopAction(), &QAction::triggered, &moduleLayouter, &ModuleLayouter::stop);
-        connect(displayUpdateController, &DisplayUpdateController::refreshInspectorsNeeded, this, &Qtenv::refreshInspectors);
-        connect(this, &Qtenv::refreshInspectorsNeeded, this, &Qtenv::refreshInspectors);
-        connect(this, &Qtenv::updateAnimationsNeeded, this, &Qtenv::updateAnimations);
-        connect(this, &Qtenv::redrawMessagesNeeded, this,  &Qtenv::redrawMessages);
-        connect(this, &Qtenv::clearMessagesNeeded, this,  &Qtenv::clearMessages);
 
         QApplication::processEvents(); // Part of the hack for Apple Menu functionality, see a few lines up.
 
@@ -744,9 +739,8 @@ void Qtenv::runSimulation(RunMode mode, simtime_t until_time, eventnumber_t unti
     doNextEventInStep = getSimulation()->isTrapOnNextEventRequested() || displayUpdateController->rightBeforeEvent();
 
     updateStatusDisplay();
-    QApplication::processEvents();
 
-    std::thread th([=]{
+    // std::thread th([=]{
         std::cout << "Qtenv::runSimulation() in other thread: this thread id: " << std::this_thread::get_id() << std::endl;
         startClock();
         notifyLifecycleListeners(LF_ON_SIMULATION_RESUME);
@@ -761,8 +755,7 @@ void Qtenv::runSimulation(RunMode mode, simtime_t until_time, eventnumber_t unti
             
             // funky while loop to handle switching to and from EXPRESS mode....
             if (runMode != RUNMODE_NORMAL) { // in NORMAL mode, doRunSimulation() already calls refreshDisplay() after each event
-                // messageAnimator->updateAnimations();
-                emit updateAnimationsNeeded();
+                messageAnimator->updateAnimations();
                 callRefreshDisplay();
             }
             simulationState = SIM_READY;
@@ -807,8 +800,8 @@ void Qtenv::runSimulation(RunMode mode, simtime_t until_time, eventnumber_t unti
         updateStatusDisplay();
         callRefreshInspectors();
         std::cout << "Qtenv::runSimulation() finished in sim thread: this thread id: " << std::this_thread::get_id() << std::endl;
-    });
-    th.detach();
+    // });
+    // th.detach();
     std::cout << "Qtenv::runSimulation() finished in main thread: this thread id: " << std::this_thread::get_id() << std::endl;
 
 }
@@ -972,8 +965,7 @@ bool Qtenv::doRunSimulationExpress()
     loggingEnabled = false;
     animating = false;
 
-    // messageAnimator->clear();
-    emit clearMessagesNeeded();
+    messageAnimator->clear();
 
     int64_t last_update = opp_get_monotonic_clock_usecs();
 
@@ -1113,8 +1105,7 @@ void Qtenv::newNetwork(const char *networkname)
 {
     try {
         refreshDisplayCount = 0;
-        // messageAnimator->clear();
-        emit clearMessagesNeeded();
+        messageAnimator->clear();
         displayUpdateController->reset();
         answers.clear();
         logBuffer.clear();
@@ -1154,11 +1145,10 @@ void Qtenv::newNetwork(const char *networkname)
     mainInspector->setObject(module);
 
     animating = true;  // affects how network graphics is drawn!
-    // messageAnimator->redrawMessages();
-    emit redrawMessagesNeeded();
+    messageAnimator->redrawMessages();
     messageAnimator->setMarkedModule(getSimulation()->guessNextModule());
-    emit updateNetworkRunDisplayNeeded();
-    emit updateStatusDisplayNeeded();
+    updateNetworkRunDisplay();
+    updateStatusDisplay();
     callRefreshInspectors();
 }
 
@@ -1167,8 +1157,7 @@ void Qtenv::newRun(const char *configname, int runnumber)
 {
     try {
         refreshDisplayCount = 0;
-        // messageAnimator->clear();
-        emit clearMessagesNeeded();
+        messageAnimator->clear();
         displayUpdateController->reset();
         answers.clear();
         logBuffer.clear();
@@ -1213,8 +1202,7 @@ void Qtenv::newRun(const char *configname, int runnumber)
     mainInspector->setObject(module);
 
     animating = true;  // affects how network graphics is drawn!
-    // messageAnimator->redrawMessages();
-    emit redrawMessagesNeeded();
+    messageAnimator->redrawMessages();
     messageAnimator->setMarkedModule(getSimulation()->guessNextModule());
     updateNetworkRunDisplay();
     updateStatusDisplay();
@@ -1360,8 +1348,7 @@ void Qtenv::refreshInspectors()
         it->refresh();
 
     messageAnimator->updateNextEventMarkers();
-    // messageAnimator->redrawMessages(); 
-    emit redrawMessagesNeeded();
+    messageAnimator->redrawMessages(); 
 
     // clear the change flags on all inspected canvases
     for (auto it : inspectors)
@@ -1376,7 +1363,7 @@ void Qtenv::refreshInspectors()
 void Qtenv::callRefreshInspectors()
 {
     try {
-        emit refreshInspectorsNeeded();
+        refreshInspectors();
     }
     catch (std::exception& e) {
         ASSERT(simulationState != SIM_ERROR); // the exception must have come from refreshDisplay calls in the model
@@ -1385,7 +1372,7 @@ void Qtenv::callRefreshInspectors()
         notifyLifecycleListeners(LF_ON_SIMULATION_ERROR);
         displayException(e);
         // have to call it again, this time it should not throw, because the state is now SIM_ERROR
-        emit refreshInspectorsNeeded();
+        refreshInspectors();
     }
 }
 
@@ -1409,8 +1396,7 @@ void Qtenv::clearMessages() {
 void Qtenv::performHoldAnimations()
 {
     displayUpdateController->setRunMode(runMode);
-    // messageAnimator->updateAnimations();
-    emit updateAnimationsNeeded();
+    messageAnimator->updateAnimations();
     displayUpdateController->animateUntilHoldEnds();
 }
 
@@ -1420,8 +1406,7 @@ void Qtenv::skipHoldAnimations()
 
     messageAnimator->skipCurrentHoldingAnims();
     displayUpdateController->skipHold();
-    // messageAnimator->updateAnimations();
-    emit updateAnimationsNeeded();
+    messageAnimator->updateAnimations();
 }
 
 std::string Qtenv::getWindowTitle()
@@ -1450,18 +1435,18 @@ std::string Qtenv::getWindowTitle()
 
 void Qtenv::updateNetworkRunDisplay()
 {
-    emit updateNetworkRunDisplayNeeded();
+    mainWindow->updateNetworkRunDisplay();
     mainWindow->setWindowTitle(getWindowTitle().c_str());
 }
 
 void Qtenv::updateSimtimeDisplay()
 {
-    emit updateSimtimeDisplayNeeded();
+    mainWindow->updateSimtimeDisplay();
 }
 
 void Qtenv::updateStatusDisplay()
 {
-    emit updateStatusDisplayNeeded();
+    mainWindow->updateStatusDisplay();
 }
 
 void Qtenv::addEventToLog(cEvent *event)

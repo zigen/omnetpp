@@ -284,18 +284,10 @@ class QTENV_API Qtenv : public QObject, public EnvirBase
 
       void storeOptsInPrefs();
       void restoreOptsFromPrefs();
-      pthread_t simulation_thread;
 
   signals:
       void fontChanged();
       void objectDeletedSignal(cObject *object); // eh, name collisions
-      void updateStatusDisplayNeeded();
-      void updateSimtimeDisplayNeeded();
-      void updateNetworkRunDisplayNeeded();
-      void refreshInspectorsNeeded();
-      void updateAnimationsNeeded();
-      void redrawMessagesNeeded();
-      void clearMessagesNeeded();
 
   public slots:
       // on single click, only shows the object in the GenericObjectInspector
@@ -317,7 +309,6 @@ class QTENV_API Qtenv : public QObject, public EnvirBase
       void setComponentLogLevel(cComponent *component, LogLevel level, bool save = false);
 
       void initialSetUpConfiguration();
-      void refreshInspectors();
       void updateAnimations();
       void redrawMessages();
       void clearMessages();
@@ -350,6 +341,7 @@ class QTENV_API Qtenv : public QObject, public EnvirBase
       void setSimulationRunUntilModule(cModule *until_module);
       bool doRunSimulation();
       bool doRunSimulationExpress();
+      void refreshInspectors();
 
       void startAll();
       void finishSimulation(); // wrapper around simulation.callFinish() and simulation.endRun()

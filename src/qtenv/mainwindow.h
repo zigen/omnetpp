@@ -88,6 +88,9 @@ public:
     // the slider value is an integer, we divide it by 100 to get a double value, then raise it to 10's exponent
     static int playbackSpeedToSliderValue(double speed) { return std::round(std::log10(speed) * 100); }
     static double sliderValueToPlaybackSpeed(int value) { return std::pow(10, value / 100.0); }
+    void updateStatusDisplay();
+    void updateSimtimeDisplay();
+    void updateNetworkRunDisplay();
 
 public slots:
 
@@ -162,11 +165,6 @@ private slots:
     void on_actionInspectByPointer_triggered();
     void on_actionRecordVideo_toggled(bool checked);
     void on_actionShowAnimationParams_toggled(bool checked);
-    void updateSimTimeLabel();
-    void updateEventNumLabel();
-    void updateSimtimeDisplay();
-    void updateStatusDisplay();
-    void updateNetworkRunDisplay();
 
 signals:
     void setNewNetwork();
@@ -210,7 +208,8 @@ private:
     void closeStopDialog();
 
     int inputBox(const QString &title, const QString &prompt, QString &variable);
-
+    void updateSimTimeLabel();
+    void updateEventNumLabel();
 };
 
 } // namespace qtenv
