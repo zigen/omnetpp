@@ -209,23 +209,23 @@ ifneq ($(EMSCRIPTEN),)
   WHOLE_ARCHIVE_ON = -Wl,--whole-archive
   WHOLE_ARCHIVE_OFF =
   EXE_SUFFIX = .html
-  CFLAGS_DEBUG+= -gsource-map -g3 -O0 --source-map-base http://localhost:8080/ 
+  CFLAGS_DEBUG+= -gsource-map -g3 -O0 --source-map-base http://localhost:8080/
   CFLAGS_RELEASE+= -O3 -Os
   CFLAGS+= -s DISABLE_EXCEPTION_CATCHING=0 -s USE_PTHREADS=1
-  LDFLAGS+= --bind -s ASYNCIFY=1 -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=1 -s TOTAL_MEMORY=1GB -s WASM=1 -s FULL_ES2=1 -s USE_WEBGL2=1 -s NO_EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","ccall","cwrap"] --preload-file . --preload-file ../../images@images --preload-file ../../../wasm-qtenvrc@.qtenvrc -s DISABLE_EXCEPTION_CATCHING=0 
+  LDFLAGS+= --bind -s ASYNCIFY=1 -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=1 -s TOTAL_MEMORY=1GB -s WASM=1 -s FULL_ES2=1 -s USE_WEBGL2=1 -s NO_EXIT_RUNTIME=0  -s EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","ccall","cwrap"] --preload-file . --preload-file ../../images@images --preload-file ../../../wasm-qtenvrc@.qtenvrc -s DISABLE_EXCEPTION_CATCHING=0 
   ifeq ($(MODE),debug)
-    # ASYNCIFY disables source-map because of sizes...
-    #LDFLAGS += -gsource-map -g3 -O0 --source-map-base http://localhost:8080/
-		LDFLAGS += -Os -g3
+    LDFLAGS += -O3 -Os  -s ASSERTIONS=2 -s SAFE_HEAP=1 -s EXCEPTION_DEBUG=0
+    #LDFLAGS += -gsource-map -g3 -O0 --source-map-base http://localhost:8080/ -s ASSERTIONS=2 -s SAFE_HEAP=1 -s EXCEPTION_DEBUG=0
   else
-    LDFLAGS += -O3 -Os
+    LDFLAGS += -O3 -Os -g0
   endif
-  $(warning $(wildcard $(CURDIR)/post.js))
   ifneq (,$(wildcard $(CURDIR)/post.js))
     LDFLAGS += --post-js ./post.js
   endif
 
-$O/index.html: $O/$(TARGET)
+default: all
+
+index.html: $O/$(TARGET)
 	echo $O/$(TARGET)
 	cp /root/qtbase/qtbase/plugins/platforms/wasm_shell.html $O/index.html
 	cp /root/qtbase/qtbase/plugins/platforms/qtloader.js $O/qtloader.js
