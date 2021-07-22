@@ -58,6 +58,10 @@
 #include "videorecordingdialog.h"
 #include "qtutil.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #define emit
 
 using namespace omnetpp::common;
@@ -514,6 +518,21 @@ void MainWindow::on_actionSetUpConfiguration_triggered()
 
     cConfigurationEx *configEx = getQtenv()->getConfigEx();
 
+#ifdef __EMSCRIPTEN__
+    auto *dialog = new RunSelectionDialog(configEx, configEx->getActiveConfigName(), "", this);
+    bool accepted = false;
+    connect(dialog, &RunSelectionDialog::accepted, [&](){ accepted = true; });
+    dialog->open();
+    while(!accepted) {
+        emscripten_sleep(10);
+    }
+    busy("Setting up new run...");
+    emit setNewNetwork();
+    env->newRun(dialog->getConfigName().c_str(), dialog->getRunNumber());
+    busy();
+    reflectRecordEventlog();
+    return;
+#else
     // No filter used for subsequent run selections.
     // Note that if invoked this way, we pretty much avoid all possibility of an exception,
     // because the run filter is constant, and the config name is the current one, so it must exist.
@@ -528,6 +547,7 @@ void MainWindow::on_actionSetUpConfiguration_triggered()
         busy();
         reflectRecordEventlog();
     }
+#endif
 }
 
 // stopSimulation

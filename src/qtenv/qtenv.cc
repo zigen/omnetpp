@@ -35,6 +35,7 @@
 #include <QFontDatabase>
 #include <QThread>
 #include <QPainter>
+#include <QColorDialog>
 
 #include "common/stringutil.h"
 #include "common/stringtokenizer.h"
@@ -92,6 +93,7 @@ void loadResource()
     Q_INIT_RESOURCE(icons);
 }
 #ifdef __EMSCRIPTEN__
+#include <emscripten.h>
 #include <QtPlugin>
 Q_IMPORT_PLUGIN(QWasmIntegrationPlugin)
 Q_IMPORT_PLUGIN(QGifPlugin)
@@ -748,7 +750,7 @@ void Qtenv::runSimulation(RunMode mode, simtime_t until_time, eventnumber_t unti
             else
                 cont = doRunSimulation();
         }
-        
+
         // funky while loop to handle switching to and from EXPRESS mode....
         if (runMode != RUNMODE_NORMAL) { // in NORMAL mode, doRunSimulation() already calls refreshDisplay() after each event
             messageAnimator->updateAnimations();
@@ -1340,7 +1342,7 @@ void Qtenv::refreshInspectors()
         it->refresh();
 
     messageAnimator->updateNextEventMarkers();
-    messageAnimator->redrawMessages(); 
+    messageAnimator->redrawMessages();
 
     // clear the change flags on all inspected canvases
     for (auto it : inspectors)
@@ -1590,13 +1592,34 @@ void Qtenv::initialSetUpConfiguration()
     int run = -1;
 
     auto conf = getConfigEx();
-
+    std::cout << conf->getConfigNames().size() << std::endl;
+    for (auto &name : conf->getConfigNames()) {
+        std::cout << name << std::endl;
+    }
     if (conf->getConfigNames().empty()) {
         mainWindow->configureNetwork();
         return;
     }
     else {
         try {
+#ifdef __EMSCRIPTEN__
+            auto *dlg = new RunSelectionDialog(conf, opt->defaultConfig, opt->runFilter, mainWindow);
+            bool accepted = false;
+            connect(dlg, &RunSelectionDialog::accepted, [&](){ accepted = true; });
+            dlg->open();
+            while(!accepted) {
+                emscripten_sleep(10);
+            }
+            std::cout << "selected " << std::endl;
+            std::cout << dlg->getConfigName().c_str() << std::endl;
+            mainWindow->busy("Setting up run...");
+            newRun(dlg->getConfigName().c_str(), dlg->getRunNumber());
+            mainWindow->busy();
+            mainWindow->reflectRecordEventlog();
+            QTimer::singleShot(0, mainWindow, &MainWindow::activateWindow);
+            return;
+#endif
+
             // defaultConfig and runFilter are what were specified in either the omnetpp.ini file or as a command line argument
             RunSelectionDialog dialog(conf, opt->defaultConfig, opt->runFilter, mainWindow);
 
@@ -1610,19 +1633,11 @@ void Qtenv::initialSetUpConfiguration()
             dialog.show();
 #endif
 
-// #ifdef __EMSCRIPTEN__
-            // connect(
-            //     dialog, &QColorDialog::colorSelected,
-            //     [=](const QColor &selectedColor) {
-            //     qDebug() << Q_FUNC_INFO << selectedColor;
-            // });
-            // dialog.open();
-// #else
+            std::cout<< "ifndef emscripten" << std::endl;
             // only show if needed, but if cancelled, stop.
             if (dialog.needsShowing() && !dialog.exec())
                 return;
 
-// #endif
             config = dialog.getConfigName();
             run = dialog.getRunNumber();
         }
@@ -2242,6 +2257,11 @@ void Qtenv::bubble(cComponent *component, const char *text)
 
 void Qtenv::confirm(DialogKind kind, const char *msg)
 {
+#ifdef __EMSCRIPTEN__
+    const char *prefix = kind==ERROR ? "Error: " : kind==WARNING ? "Warning: " : "";
+    out << "\n<!> " << prefix << msg << endl << endl;
+    return;
+#endif
     if (!mainWindow) {
         // fallback in case Qt didn't fire up correctly
         const char *prefix = kind==ERROR ? "Error: " : kind==WARNING ? "Warning: " : "";
