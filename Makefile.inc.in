@@ -208,7 +208,7 @@ ifneq ($(EMSCRIPTEN),)
   ARFLAG_OUT= qcs 
   WHOLE_ARCHIVE_ON = -Wl,--whole-archive
   WHOLE_ARCHIVE_OFF =
-  EXE_SUFFIX = .html
+  EXE_SUFFIX = .js
   CFLAGS_DEBUG+= -gsource-map -g3 -O0 --source-map-base http://localhost:8080/
   CFLAGS_RELEASE+= -O3 -Os
   CFLAGS+= -s DISABLE_EXCEPTION_CATCHING=0 -s USE_PTHREADS=0
@@ -217,7 +217,7 @@ ifneq ($(EMSCRIPTEN),)
     LDFLAGS += -O3 -Os  -s ASSERTIONS=2 -s SAFE_HEAP=1 -s EXCEPTION_DEBUG=0
     #LDFLAGS += -gsource-map -g3 -O0 --source-map-base http://localhost:8080/ -s ASSERTIONS=2 -s SAFE_HEAP=1 -s EXCEPTION_DEBUG=0
   else
-    LDFLAGS += -O3 -Os -g0
+    LDFLAGS += -O3 -Os
   endif
   ifneq (,$(wildcard $(CURDIR)/post.js))
     LDFLAGS += --post-js ./post.js
@@ -232,6 +232,8 @@ index.html: $O/$(TARGET)
 	cp /root/qtbase/qtbase/plugins/platforms/qtlogo.svg $O/qtlogo.svg
 	sed -i 's/@APPNAME@/$(basename $(TARGET))/' $O/index.html
 	sed -i 's/@APPNAME@/$(basename $(TARGET))/' $O/qtloader.js
+
+%.js: index.html
 
 endif
 
