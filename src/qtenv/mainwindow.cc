@@ -1177,9 +1177,20 @@ void MainWindow::on_actionAbout_OMNeT_Qtenv_triggered()
     layout->addWidget(frame);
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok);
+
+#ifdef __EMSCRIPTEN__
+    bool accepted = false;
+    connect(buttonBox, &QDialogButtonBox::accepted, [&](){ accepted = true; });
+    layout->addWidget(buttonBox);
+    about->open();
+    while(!accepted) {
+        emscripten_sleep(10);
+    }
+#else
     connect(buttonBox, SIGNAL(accepted()), about, SLOT(accept()));
     layout->addWidget(buttonBox);
     about->exec();
+#endif
 
     delete layout;
     delete frameLayout;
