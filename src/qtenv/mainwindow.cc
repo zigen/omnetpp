@@ -1291,6 +1291,52 @@ void MainWindow::on_actionConcludeSimulation_triggered()
     if (!networkPresent())
         return;
 
+#ifdef __EMSCRIPTEN__
+    if (getQtenv()->getSimulationState() == Qtenv::SIM_FINISHCALLED) {
+        auto *msgbox = new QMessageBox( QMessageBox::Icon::Information,tr("Error"), tr("finish() has been invoked already."), QMessageBox::Ok, this);
+        // msgbox->addButton()
+        bool accepted = false;
+        connect(msgbox, &QMessageBox::finished, [&]() {accepted = true;});
+        msgbox->open();
+        msgbox->adjustSize();
+        while(!accepted) {
+            emscripten_sleep(10);
+        }
+        return;
+    }
+    if (getQtenv()->getSimulationState() == Qtenv::SIM_ERROR) {
+        auto *msgbox = new QMessageBox(QMessageBox::Icon::Question, tr("Warning"),
+                    "Simulation has stopped with error, calling finish() might produce unexpected results. Proceed anyway?",
+                    QMessageBox::Yes | QMessageBox::No, this);
+
+        bool accepted = false;
+        connect(msgbox, &QMessageBox::finished, [&]() {accepted = true;});
+        msgbox->open();
+        msgbox->adjustSize();
+        while(!accepted) {
+            emscripten_sleep(10);
+        }
+        if (msgbox->standardButton(msgbox->clickedButton()) == QMessageBox::No) {
+            return;
+        }
+    }
+    else {
+        auto *msgbox = new QMessageBox(QMessageBox::Icon::Question, tr("Question"),
+                    "Do you want to conclude this simulation run and invoke finish() on all modules?",
+                    QMessageBox::Yes | QMessageBox::No, this);
+
+        bool accepted = false;
+        connect(msgbox, &QMessageBox::finished, [&]() {accepted = true;});
+        msgbox->open();
+        msgbox->adjustSize();
+        while(!accepted) {
+            emscripten_sleep(10);
+        }
+        if (msgbox->standardButton(msgbox->clickedButton()) == QMessageBox::No) {
+            return;
+        }
+    }
+#else
     // check state is not SIM_FINISHCALLED
     if (getQtenv()->getSimulationState() == Qtenv::SIM_FINISHCALLED) {
         QMessageBox::information(this, tr("Error"), tr("finish() has been invoked already."), QMessageBox::Ok);
@@ -1316,7 +1362,7 @@ void MainWindow::on_actionConcludeSimulation_triggered()
         if (ans == QMessageBox::No)
             return;
     }
-
+#endif
     busy("Invoking finish() on all modules...");
     getQtenv()->finishSimulation();
     busy();
