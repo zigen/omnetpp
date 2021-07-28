@@ -1633,7 +1633,6 @@ void Qtenv::initialSetUpConfiguration()
             dialog.show();
 #endif
 
-            std::cout<< "ifndef emscripten" << std::endl;
             // only show if needed, but if cancelled, stop.
             if (dialog.needsShowing() && !dialog.exec())
                 return;
@@ -2257,22 +2256,41 @@ void Qtenv::bubble(cComponent *component, const char *text)
 
 void Qtenv::confirm(DialogKind kind, const char *msg)
 {
-#ifdef __EMSCRIPTEN__
-    const char *prefix = kind==ERROR ? "Error: " : kind==WARNING ? "Warning: " : "";
-    out << "\n<!> " << prefix << msg << endl << endl;
-    return;
-#endif
     if (!mainWindow) {
         // fallback in case Qt didn't fire up correctly
         const char *prefix = kind==ERROR ? "Error: " : kind==WARNING ? "Warning: " : "";
         out << "\n<!> " << prefix << msg << endl << endl;
     }
     else {
+#ifdef __EMSCRIPTEN__
+        QMessageBox* msgBox = nullptr;
+        switch (kind) {
+        case INFO:
+            msgBox = new QMessageBox(QMessageBox::Icon::Information, "Confirm", msg, QMessageBox::StandardButton::Ok, mainWindow);
+            break;
+        case WARNING:
+            msgBox = new QMessageBox(QMessageBox::Icon::Warning, "Confirm", msg, QMessageBox::StandardButton::Ok, mainWindow);
+            break;
+        case ERROR:
+            msgBox = new QMessageBox(QMessageBox::Icon::Critical, "Confirm", msg, QMessageBox::StandardButton::Ok, mainWindow);
+            break;
+        }
+        if (msgBox == nullptr) return;
+        bool accepted = false;
+        connect(msgBox, &QMessageBox::accepted, [&]() {accepted = true;});
+        msgBox->open();
+        msgBox->adjustSize();
+        while(!accepted) {
+            emscripten_sleep(10);
+        }
+        delete msgBox;
+#else
         switch (kind) {
         case INFO: QMessageBox::information(mainWindow, "Confirm", msg, QMessageBox::StandardButton::Ok); break;
         case WARNING: QMessageBox::warning(mainWindow, "Confirm", msg, QMessageBox::StandardButton::Ok); break;
         case ERROR: QMessageBox::critical(mainWindow, "Confirm", msg, QMessageBox::StandardButton::Ok); break;
         }
+#endif
     }
 }
 

@@ -16,6 +16,7 @@
 
 #include <QDebug>
 #include <QMenu>
+#include <QObject>
 #include <QApplication>
 #include <QClipboard>
 #include <common/stringutil.h>
@@ -30,6 +31,10 @@
 #include "preferencesdialog.h"
 #include "genericobjectinspector.h"
 #include "mainwindow.h"
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 namespace omnetpp {
 using namespace common;
@@ -296,7 +301,17 @@ void InspectorUtil::setClipboard(QString str)
 void InspectorUtil::preferencesDialog(eTab defaultPage)
 {
     PreferencesDialog *prefDialog = new PreferencesDialog(defaultPage, getQtenv()->getMainWindow());
+#ifdef __EMSCRIPTEN__
+    bool accepted = false;
+    QObject::connect(prefDialog, &QDialog::finished, [&]() {accepted = true;});
+    prefDialog->open();
+    prefDialog->adjustSize();
+    while (!accepted) {
+        emscripten_sleep(10);
+    }
+#else
     prefDialog->exec();
+#endif
     delete prefDialog;
 }
 
