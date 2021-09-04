@@ -1,3 +1,5 @@
+.DS_Store
+*.js
 a.out.js
 *.so.js
 *_dbg.html
