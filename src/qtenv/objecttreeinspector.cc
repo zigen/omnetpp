@@ -24,7 +24,9 @@
 
 #include <QDebug>
 #include <mutex>
-
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #define emit
 
 namespace omnetpp {
@@ -88,7 +90,14 @@ void ObjectTreeInspector::createContextMenu(QPoint pos)
         QVector<cObject *> objects;
         objects.push_back(model->getObjectFromIndex(index));
         QMenu *menu = InspectorUtil::createInspectorContextMenu(objects, this);
+#ifdef __EMSCRIPTEN__
+        menu->popup(mapToGlobal(pos));
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);
+#else
         menu->exec(mapToGlobal(pos));
+#endif
         delete menu;
     }
 }

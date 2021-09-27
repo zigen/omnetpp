@@ -40,7 +40,9 @@
 #include "logfilterdialog.h"
 #include "messageprintertagsdialog.h"
 #include "textviewerproviders.h"
-
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 using namespace omnetpp::common;
 
 namespace omnetpp {
@@ -350,7 +352,14 @@ void LogInspector::onRightClicked(QPoint globalPos, int lineIndex, int column)
     auto msg = (cMessage *)textWidget->getContentProvider()->getUserData(lineIndex);
     if (msg) {
         QMenu *menu = InspectorUtil::createInspectorContextMenu(msg, this);
+#ifdef __EMSCRIPTEN__
+        menu->popup(globalPos);
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);
+#else
         menu->exec(globalPos);
+#endif
     }
 }
 

@@ -21,6 +21,9 @@
 #include "inspectorutil.h"
 #include "inspectorfactory.h"
 #include "qtenv.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #define emit
 
@@ -67,13 +70,25 @@ void TimeLineInspector::createContextMenu(QVector<cObject *> objects, QPoint glo
 {
     if (objects.size()) {
         QMenu *menu = InspectorUtil::createInspectorContextMenu(objects, this);
+#ifdef __EMSCRIPTEN__
+        menu->popup(globalPos);
+        while(true) emscripten_sleep(10);
+#else
         menu->exec(globalPos);
+#endif
         delete menu;
     }
     else {
         QMenu *menu = new QMenu();
         menu->addAction("Timeline Settings...", this, SLOT(runPreferencesDialog()));
+#ifdef __EMSCRIPTEN__
+        menu->popup(globalPos);
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);
+#else
         menu->exec(globalPos);
+#endif
         delete menu;
     }
 }

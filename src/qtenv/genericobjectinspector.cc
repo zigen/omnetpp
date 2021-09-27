@@ -39,6 +39,10 @@
 #include <QApplication>
 #include <QClipboard>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #define emit
 
 using namespace omnetpp;
@@ -273,7 +277,14 @@ void GenericObjectInspector::createContextMenu(QPoint pos)
         QVector<cObject *> objects;
         objects.push_back(object);
         QMenu *menu = InspectorUtil::createInspectorContextMenu(objects, this);
+#ifdef __EMSCRIPTEN__
+        menu->popup(treeView->mapToGlobal(pos));
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);
+#else
         menu->exec(treeView->mapToGlobal(pos));
+#endif
         delete menu;
     }
     else {
@@ -292,7 +303,14 @@ void GenericObjectInspector::createContextMenu(QPoint pos)
             connect(copyAction, &QAction::triggered, [text]() {
                 QApplication::clipboard()->setText(text, QClipboard::Clipboard);
             });
+#ifdef __EMSCRIPTEN__
+            menu->popup(treeView->mapToGlobal(pos));
+            bool triggered = false;
+            connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+            while(!triggered) emscripten_sleep(10);
+#else
             menu->exec(treeView->mapToGlobal(pos));
+#endif
             delete menu;
         }
     }

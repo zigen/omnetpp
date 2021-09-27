@@ -24,7 +24,9 @@
 #include <QMenu>
 
 #include <QDebug>
-
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #define emit
 
 namespace omnetpp {
@@ -77,7 +79,14 @@ void ObjectListView::contextMenuEvent(QContextMenuEvent *event)
     QMenu *menu = InspectorUtil::createInspectorContextMenu(object);
     menu->setDisabled(state);
 
+#ifdef __EMSCRIPTEN__
+    menu->popup(event->globalPos());
+    bool triggered = false;
+    connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+    while(!triggered) emscripten_sleep(10);
+#else
     menu->exec(event->globalPos());
+#endif
 
     delete menu;
 }
