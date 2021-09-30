@@ -579,11 +579,23 @@ void MainWindow::on_actionRunUntil_triggered()
     }
 
     RunUntilDialog runUntilDialog;
+#ifdef __EMSCRIPTEN__
+    bool accepted = false, rejected = false;
+    connect(&runUntilDialog, &RunUntilDialog::accepted, [&](){ accepted = true; });
+    connect(&runUntilDialog, &RunUntilDialog::rejected, [&](){ rejected = true; });
+    runUntilDialog.open();
+    while(!accepted && !rejected) emscripten_sleep(10);
+    if (rejected) {
+        setGuiForRunmode(getQtenv()->getSimulationRunMode());
+        return;
+    }
+#else
     if (!runUntilDialog.exec()) {
         // popping the button back out
         setGuiForRunmode(getQtenv()->getSimulationRunMode());
         return;
     }
+#endif
 
     RunMode runMode = runUntilDialog.getMode();
     simtime_t time = runUntilDialog.getTime();
