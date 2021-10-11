@@ -213,7 +213,7 @@ ifneq ($(EMSCRIPTEN),)
   CFLAGS_RELEASE+= -O3 -Os
   PRELOAD_FILES ?= --preload-file .
   CFLAGS+= -s DISABLE_EXCEPTION_CATCHING=0 -s USE_PTHREADS=0
-  LDFLAGS+= --bind -s ASYNCIFY=1 -s USE_PTHREADS=0 -s PTHREAD_POOL_SIZE=1 -s TOTAL_MEMORY=1GB -s WASM=1 -s FULL_ES2=1 -s USE_WEBGL2=1 -s NO_EXIT_RUNTIME=0  -s EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","ccall","cwrap"] $(PRELOAD_FILES) --preload-file $(HOME)/omnetpp/images@images --preload-file $(HOME)/wasm-qtenvrc@.qtenvrc -s DISABLE_EXCEPTION_CATCHING=0 
+  LDFLAGS+= --bind -s ASYNCIFY=1 -s USE_PTHREADS=0 -s PTHREAD_POOL_SIZE=1 -s TOTAL_MEMORY=1GB -s WASM=1 -s FULL_ES2=1 -s USE_WEBGL2=1 -s NO_EXIT_RUNTIME=0  -s EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","ccall","cwrap"] $(PRELOAD_FILES) --preload-file /root/omnetpp/images@images --preload-file /root/wasm-qtenvrc@.qtenvrc -s DISABLE_EXCEPTION_CATCHING=0 
   ifeq ($(MODE),debug)
     LDFLAGS += -O3 -Os  -s ASSERTIONS=2 -s SAFE_HEAP=1 -s EXCEPTION_DEBUG=0
     #LDFLAGS += -gsource-map -g3 -O0 --source-map-base http://localhost:8080/ -s ASSERTIONS=2 -s SAFE_HEAP=1 -s EXCEPTION_DEBUG=0
@@ -277,7 +277,7 @@ ifeq ($(WITH_TKENV),yes)
 endif
 
 ifneq ($(EMSCRIPTEN),) 
-  QTENV_LIBS = -L$(HOME)/qtbase/qtbase/lib -L$(HOME)/qtbase/qtbase/plugins/platforms -L$(HOME)/qtbase/qtbase/plugins/imageformats/ -lqwasm -lQt5Gui -lQt5Core -lQt5Widgets -lQt5PrintSupport -lQt5OpenGL -lQt5EventDispatcherSupport -lQt5FontDatabaseSupport -lqtfreetype -lqgif  -lqtpcre2 -lqtlibpng -lqtharfbuzz -lqjpeg -lqico -loppqtenv$D -loppenvir$D -lopplayout$D
+  QTENV_LIBS = -L/root/qtbase/qtbase/lib -L/root/qtbase/qtbase/plugins/platforms -L/root/qtbase/qtbase/plugins/imageformats/ -lqwasm -lQt5Gui -lQt5Core -lQt5Widgets -lQt5PrintSupport -lQt5OpenGL -lQt5EventDispatcherSupport -lQt5FontDatabaseSupport -lqtfreetype -lqgif  -lqtpcre2 -lqtlibpng -lqtharfbuzz -lqjpeg -lqico -loppqtenv$D -loppenvir$D -lopplayout$D
   QTENV_LDFLAGS = 
   ALL_ENV_LIBS = $(QTENV_LIBS)
 endif
