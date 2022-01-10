@@ -13,8 +13,8 @@ TARGET_LIB_FILES=$(OMNETPP_LIB_DIR)/$(LIBNAME)$(LIB_SUFFIX)
 # On Windows, the targets are different (DLLs go into the bin dir and separate export libs are created)
 ifeq ($(PLATFORM),win32.x86_64)
   ifeq ($(SHARED_LIBS),yes)
-    TARGET_LIB_FILES=$(OMNETPP_BIN_DIR)/$(LIBNAME)$(DLL_LIB_SUFFIX) $(OMNETPP_LIB_DIR)/$(LIBNAME)$(A_LIB_SUFFIX)
-    ifeq ($(TOOLCHAIN_NAME),clangc2)
+    TARGET_LIB_FILES=$(OMNETPP_BIN_DIR)/$(LIBNAME)$(DLL_LIB_SUFFIX) $(OMNETPP_LIB_DIR)/$(LIBNAME)$(IMPLIB_SUFFIX)
+    ifeq ($(TOOLCHAIN_NAME),clang-msabi)
       ifeq ($(MODE),debug)
         TARGET_LIB_FILES+=$(OMNETPP_BIN_DIR)/$(LIBNAME).pdb
       endif
@@ -50,8 +50,13 @@ COPTS+= -DTHREADED $(PTHREAD_CFLAGS)
 IMPLIBS+= $(PTHREAD_LIBS)
 endif
 
-# macro is used in $(EXPORT_DEFINES) with clang/c2 when building a shared lib
+# macro is used in $(EXPORT_DEFINES) with clang-msabi when building a shared lib
 EXPORT_MACRO = -DCOMMON_EXPORT
+ifeq ($(PLATFORM),win32.x86_64)
+    EXPORT_MACRO+= "-DSQLITE_API=__declspec(dllexport)"
+else
+    EXPORT_MACRO+= "-DSQLITE_API=__attribute__ ((visibility (\"default\")))"
+endif
 
 .PHONY: all clean
 .SECONDARY: $(OBJS) $O/$(LIBNAME)$(LIB_SUFFIX) $(GENERATED_SOURCES)
@@ -79,10 +84,10 @@ $O/%$(SO_LIB_SUFFIX) : $(OBJS)
 	$(Q)$(SHLIB_LD) $(LDFLAGS) -o $O/$(LIBNAME)$(SO_LIB_SUFFIX) $(OBJS) $(IMPLIBS)
 
 # dynamically linked library + import lib (on Windows)
-$O/%$(DLL_LIB_SUFFIX) $O/%$(A_LIB_SUFFIX): $(OBJS)
+$O/%$(DLL_LIB_SUFFIX) $O/%$(IMPLIB_SUFFIX): $(OBJS)
 	@mkdir -p $O
 	@echo Creating DLL and import library: $@
-	$(Q)$(SHLIB_LD) $(LDFLAGS) -o $O/$(LIBNAME)$(DLL_LIB_SUFFIX) $(OBJS) $(IMPLIBS) $(LDFLAG_IMPLIB)$O/$(LIBNAME)$(A_LIB_SUFFIX)
+	$(Q)$(SHLIB_LD) $(LDFLAGS) -o $O/$(LIBNAME)$(DLL_LIB_SUFFIX) $(OBJS) $(IMPLIBS) $(LDFLAG_IMPLIB)$O/$(LIBNAME)$(IMPLIB_SUFFIX)
 else
 # statically linked library (on all platforms)
 $O/%$(A_LIB_SUFFIX) : $(OBJS)
@@ -96,12 +101,7 @@ endif
 $O/sqlite3.o: sqlite3.c
 	@mkdir -p $O
 	$(qecho) "$<"
-ifeq ($(TOOLCHAIN_NAME),clangc2)
-# On Windows Clang/C2 compiler we use cl for this C file because Clang/C2 crashes on the file (too big file :)
-	$(Q)cl -nologo -c -O2 "-DSQLITE_API=__declspec(dllexport)" -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_DEFAULT_FOREIGN_KEYS=1 -Fo: $@ $<
-else
-	$(Q)$(CC) -c $(COPTS) -Wno-deprecated-declarations -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_DEFAULT_FOREIGN_KEYS=1 -o $@ $<
-endif
+	$(Q)$(CC) -c $(COPTS) -Wno-deprecated-declarations $(EXPORT_DEFINES) -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_DEFAULT_FOREIGN_KEYS=1 -o $@ $<
 
 # copy files to the bin and lib directories from the out directory
 $(OMNETPP_BIN_DIR)/% $(OMNETPP_LIB_DIR)/%: $O/% $(CONFIGFILE)

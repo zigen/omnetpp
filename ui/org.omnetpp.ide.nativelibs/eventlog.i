@@ -35,6 +35,7 @@ using namespace omnetpp::eventlog;
 #define EVENTLOG_API
 #define OPP_DLLEXPORT
 #define OPP_DLLIMPORT
+#define _OPP_GNU_ATTRIBUTE(x)
 
 %typemap(javacode) omnetpp::common::FileReader %{
     public FileReader(String fileName, boolean cMemoryOwn) {
@@ -99,6 +100,8 @@ typedef std::vector<IMessageDependency *> IMessageDependencyList;
 %include "std_list.i"    // our custom version
 %include "std_vector.i"
 %include "std_map.i"
+
+%include "map_oldapi.i" // needed for SWIG >=4.0 so we still have the 3.x functions
 
 namespace std {
 

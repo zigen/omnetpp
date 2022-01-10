@@ -1,13 +1,11 @@
 package org.omnetpp.ide.installer;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -67,57 +65,28 @@ public class InstallSimulationModelsDialog extends TitleAreaDialog {
         setShellStyle(getShellStyle() | SWT.RESIZE);
     }
 
-    protected void downloadProjectDescriptions(URL url) {
-        try {
-            projectDescriptions = new ArrayList<ProjectDescription>();
-            projectDescriptionURLs = new ArrayList<URL>();
-            InputStream inputStream = url.openConnection().getInputStream();
-            String descriptors = FileUtils.readTextFile(inputStream, "utf-8");
-            String[] descriptorFileNames = StringUtils.strip(descriptors).split("\n");
-            for (String descriptorFileName : descriptorFileNames) {
-                String descriptorStrippedFileName = StringUtils.strip(descriptorFileName);
-                if (!descriptorStrippedFileName.isEmpty()) {
-                    String projectDescriptionPath = url.getPath().replaceFirst("/[^/]*$", "/") + descriptorStrippedFileName;
-                    URL projectDescriptionURL = new URL(url.getProtocol(), url.getHost(), url.getPort(), projectDescriptionPath);
-                    File projectDescriptionFile = downloadProjectDescription(projectDescriptionURL);
-                    ProjectDescription projectDescription = parseProjectDescription(projectDescriptionFile);
-                    projectDescriptions.add(projectDescription);
-                    projectDescriptionURLs.add(projectDescriptionURL);
-                }
+    protected void downloadProjectDescriptions(URL url) throws IOException {
+        projectDescriptions = new ArrayList<ProjectDescription>();
+        projectDescriptionURLs = new ArrayList<URL>();
+        InputStream inputStream = url.openConnection().getInputStream();
+        String descriptors = FileUtils.readTextFile(inputStream, "utf-8");
+        String[] descriptorFileNames = StringUtils.strip(descriptors).split("\n");
+        for (String descriptorFileName : descriptorFileNames) {
+            String descriptorStrippedFileName = StringUtils.strip(descriptorFileName);
+            if (!descriptorStrippedFileName.isEmpty()) {
+                String projectDescriptionPath = url.getPath().replaceFirst("/[^/]*$", "/") + descriptorStrippedFileName;
+                URL projectDescriptionURL = new URL(url.getProtocol(), url.getHost(), url.getPort(), projectDescriptionPath);
+                ProjectDescription projectDescription = ProjectDescription.download(projectDescriptionURL);
+                projectDescriptions.add(projectDescription);
+                projectDescriptionURLs.add(projectDescriptionURL);
             }
-        }
-        catch (Exception e) {
-            // TODO: error handling
-            throw new RuntimeException(e);
-        }
-    }
-
-    protected File downloadProjectDescription(URL projectDescriptionURL) {
-        try {
-            File projectDescriptionFile = File.createTempFile("projectDescription", ".xml");
-            org.apache.commons.io.FileUtils.copyURLToFile(projectDescriptionURL, projectDescriptionFile);
-            return projectDescriptionFile;
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Cannot download project description from " + projectDescriptionURL, e);
-        }
-    }
-
-    protected ProjectDescription parseProjectDescription(File descriptionFile) {
-        try {
-            DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
-            return new ProjectDescription(documentBuilder.parse(descriptionFile));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Cannot parse project description from " + descriptionFile.getAbsolutePath(), e);
         }
     }
 
     @Override
     protected void configureShell(Shell shell) {
         super.configureShell(shell);
-        Point size = new Point(1000, 700);
+        Point size = new Point(1000, 870);
         Display display = shell.getDisplay();
         Rectangle screen = display.getMonitors()[0].getBounds();
         shell.setBounds((screen.width - size.x)/2, (screen.height-size.y)/2, size.x, size.y);
@@ -138,7 +107,9 @@ public class InstallSimulationModelsDialog extends TitleAreaDialog {
         gridLayout = new GridLayout(2, false);
         gridLayout.marginWidth = gridLayout.marginHeight = 10;
         group.setLayout(gridLayout);
-        group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
+        var projectTableDG = new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1);
+        projectTableDG.minimumHeight = 260;
+        group.setLayoutData(projectTableDG);
         group.setText("Model");
         projectsTable = new Table(group, SWT.BORDER);
         projectsTable.setHeaderVisible(true);
@@ -159,7 +130,9 @@ public class InstallSimulationModelsDialog extends TitleAreaDialog {
         gridLayout = new GridLayout();
         gridLayout.marginWidth = gridLayout.marginHeight = 10;
         group.setLayout(gridLayout);
-        group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
+        var gd = new GridData(SWT.FILL, SWT.FILL, true, false, 2, 1);
+        gd.heightHint = 110;
+        group.setLayoutData(gd);
         longDescription = new Label(group, SWT.WRAP | SWT.V_SCROLL);
         longDescription.setLayoutData(new GridData(GridData.FILL_BOTH));
         group = new Group(container, SWT.NONE);
@@ -172,8 +145,6 @@ public class InstallSimulationModelsDialog extends TitleAreaDialog {
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, 1, 1));
         label.setText("Project name: ");
         projectName = new Text(group, SWT.BORDER);
-        // TODO: revive this when importing a project with a different name than the one in the .project file becomes possible
-        projectName.setEnabled(false);
         projectName.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
         useDefaultLocation = new Button(group, SWT.CHECK);
         useDefaultLocation.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, 3, 1));
@@ -205,8 +176,6 @@ public class InstallSimulationModelsDialog extends TitleAreaDialog {
             public void widgetSelected(SelectionEvent event) {
                 ProjectDescription projectDescription = (ProjectDescription)event.item.getData();
                 longDescription.setText(projectDescription.getLongDescription());
-                // TODO: revive this when importing a project with a different name than the one in the .project file becomes possible
-                // projectName.setText(projectDescription.getName() + "-" + projectDescription.getVersion());
                 projectName.setText(projectDescription.getName());
                 updateDefaultLocation();
                 getButton(IDialogConstants.OK_ID).setEnabled(true);
@@ -303,7 +272,9 @@ public class InstallSimulationModelsDialog extends TitleAreaDialog {
 
     protected void installProject(URL projectDescriptionURL, ProjectDescription projectDescription) {
         try {
-            ProjectInstallationOptions projectInstallationOptions = new ProjectInstallationOptions(projectName.getText(), useDefaultLocation.getSelection(), location.getText());
+            ProjectInstallationOptions projectInstallationOptions = new ProjectInstallationOptions();
+            projectInstallationOptions.name = projectName.getText();
+            projectInstallationOptions.location = useDefaultLocation.getSelection() ? null : location.getText();
             InstallProjectJob installProjectJob = new InstallProjectJob(projectDescriptionURL, projectInstallationOptions);
             installProjectJob.setUser(true);
             installProjectJob.schedule();

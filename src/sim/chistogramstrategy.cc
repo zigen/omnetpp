@@ -14,6 +14,7 @@
 *--------------------------------------------------------------*/
 
 #include <algorithm>
+#include <limits>
 #include "omnetpp/regmacros.h"
 #include "omnetpp/onstartup.h"
 #include "omnetpp/globals.h"
@@ -324,7 +325,7 @@ void cDefaultHistogramStrategy::createBins()
         rangeMin = 0; // do not go into negative unless warranted by the collected data
 
     // just to avoid dividing by zero...
-    if (rangeMin == rangeMax)
+    if (rangeMax-rangeMin < std::numeric_limits<decltype(rangeMax)>::denorm_min() * targetNumBins)
         binSize = 1;
     else {
         binSize = (rangeMax - rangeMin) / targetNumBins;
@@ -568,7 +569,11 @@ void cAutoRangeHistogramStrategy::createBins()
         binSize = requestedBinSize;
     }
     else {
-        double approxBinSize = (rangeMax - rangeMin) / targetNumBins;
+        double approxBinSize;
+        if (rangeMax-rangeMin < std::numeric_limits<decltype(rangeMax)>::denorm_min() * targetNumBins)
+            approxBinSize = 1;
+        else
+            approxBinSize = (rangeMax - rangeMin) / targetNumBins;
         binSize = (mode == cHistogram::MODE_INTEGERS) ? ceil(approxBinSize) : approxBinSize;
 
         if (binSizeRounding) {

@@ -2,19 +2,15 @@
 <feature
       id="org.omnetpp.ide"
       label="OMNeT++ IDE"
-      version="5.6.2.qualifier"
+      version="5.7.0.qualifier"
       provider-name="OpenSim Ltd."
       os="linux,macosx,win32"
       ws="cocoa,gtk,win32"
-      arch="x86,x86_64">
+      arch="x86_64">
 
    <requires>
       <import feature="org.eclipse.platform"/>
       <import feature="org.eclipse.cdt"/>
-      <import feature="org.eclipse.emf.common"/>
-      <import feature="org.eclipse.emf.ecore"/>
-      <import feature="org.eclipse.emf.ecore.edit"/>
-      <import feature="org.eclipse.emf.edit"/>
       <import feature="org.eclipse.gef"/>
       <import feature="org.eclipse.gmf"/>
       <import feature="org.eclipse.gmf.runtime.thirdparty"/>

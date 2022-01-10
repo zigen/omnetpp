@@ -17,9 +17,12 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
+import org.eclipse.debug.core.ILaunchListener;
+import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialogWithToggle;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -107,6 +110,41 @@ public class SimulationDebugLaunchDelegate extends GdbLaunchDelegate {
         configuration = OmnetppLaunchUtils.createUpdatedLaunchConfig(configuration, mode, true);
         OmnetppLaunchUtils.replaceConfigurationInLaunch(launch, configuration);
 
+        final ILaunchConfiguration fc = configuration;
+        ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
+        lm.addLaunchListener(new ILaunchListener() {
+
+            @Override
+            public void launchRemoved(ILaunch launch) {
+                // nothing
+            }
+
+            @Override
+            public void launchChanged(ILaunch launchParam) {
+                if (launchParam == launch) {
+                    if (launch.getProcesses().length >= 2)
+                    {
+                        try {
+                            String workingDir = fc.getAttribute(IOmnetppLaunchConstants.ATTR_WORKING_DIRECTORY, "");
+                            String commandLine = fc.getAttribute(IOmnetppLaunchConstants.ATTR_PROGRAM_NAME, "")
+                                        + fc.getAttribute(IOmnetppLaunchConstants.ATTR_PROGRAM_ARGUMENTS, "");
+
+                            OmnetppLaunchUtils.printToConsole(launch.getProcesses()[1], "Debugging...\n\n$ cd "+workingDir+"\n$ "+commandLine+"\n\n", false);
+                        } catch (CoreException e) {
+                            e.printStackTrace();
+                        }
+
+                        lm.removeLaunchListener(this);
+                    }
+                }
+            }
+
+            @Override
+            public void launchAdded(ILaunch launch) {
+                // nothing
+            }
+        });
+
         // launch the debug session
         super.launch(launch.getLaunchConfiguration(), mode, launch, monitor);
     }
@@ -138,7 +176,7 @@ public class SimulationDebugLaunchDelegate extends GdbLaunchDelegate {
      * Convert pre-4.3 launch configs to 4.3+. This code can be removed once we are well past version 4.3.
      */
     protected ILaunchConfiguration offerUpgradingLaunchConfig(final ILaunchConfiguration config) throws CoreException {
-        String gdbInitFile = config.getAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_GDB_INIT, "");
+        String gdbInitFile = config.getAttribute(IOmnetppLaunchConstants.ATTR_GDB_INIT, "");
 
         if (gdbInitFile.equals(".gdbinit")) {
             // offer user to replace it with the right setting
@@ -174,7 +212,7 @@ public class SimulationDebugLaunchDelegate extends GdbLaunchDelegate {
 
     protected ILaunchConfigurationWorkingCopy upgradeLaunchConfig(ILaunchConfiguration config) throws CoreException {
         ILaunchConfigurationWorkingCopy workingCopy = config.getWorkingCopy();
-        workingCopy.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_GDB_INIT, IOmnetppLaunchConstants.OPP_GDB_INIT_FILE);
+        workingCopy.setAttribute(IOmnetppLaunchConstants.ATTR_GDB_INIT, IOmnetppLaunchConstants.OPP_GDB_INIT_FILE);
         workingCopy.doSave();
         return workingCopy;
     }

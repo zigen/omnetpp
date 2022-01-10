@@ -2455,8 +2455,10 @@ void cPathFigure::setPath(const char *pathString)
     while (opp_isspace(*s))
         s++;
     try {
+        char prevCode = 0;
         while (*s) {
-            char code = *s++;
+            char code = (opp_isalpha(*s) || prevCode == 0) ? *s++ : prevCode;
+            prevCode = code;
             switch (code) {
                 case 'M': {
                     double x, y;
@@ -2576,8 +2578,7 @@ void cPathFigure::setPath(const char *pathString)
         }
     }
     catch (std::exception& e) {
-        std::string msg = opp_stringf("%s in path near column %d", e.what(), s - pathString);
-        throw cRuntimeError(msg.c_str());
+        throw cRuntimeError("%s in path near column %" PRId64, e.what(), s - pathString);
     }
 }
 

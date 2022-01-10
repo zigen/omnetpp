@@ -17,12 +17,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
+import org.eclipse.cdt.managedbuilder.core.IManagedBuildInfo;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
 import org.eclipse.cdt.ui.newui.CDTPropertyManager;
 import org.eclipse.core.resources.IContainer;
@@ -44,11 +46,21 @@ import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.core.ILaunchManager;
+import org.eclipse.debug.core.model.IProcess;
+import org.eclipse.debug.internal.ui.DebugUIPlugin;
+import org.eclipse.debug.internal.ui.views.console.ProcessConsole;
+import org.eclipse.debug.internal.ui.views.console.ProcessConsoleManager;
+import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.MessageDialogWithToggle;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.console.ConsolePlugin;
+import org.eclipse.ui.console.IConsole;
+import org.eclipse.ui.console.IConsoleListener;
+import org.eclipse.ui.console.IConsoleManager;
+import org.eclipse.ui.console.IOConsoleOutputStream;
 import org.eclipse.ui.model.WorkbenchContentProvider;
 import org.omnetpp.common.CommonPlugin;
 import org.omnetpp.common.Debug;
@@ -312,8 +324,10 @@ public class OmnetppLaunchUtils {
         configuration.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_ID, "gdb");
         configuration.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_STOP_AT_MAIN, false);
         configuration.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL, "main");
-        if (!Platform.getOS().equals(Platform.OS_MACOSX))
-            configuration.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_GDB_INIT, IOmnetppLaunchConstants.OPP_GDB_INIT_FILE);
+        if (Platform.getOS().equals(Platform.OS_MACOSX))  // use the bundled lldb-mi wrapper instead of gdb
+            configuration.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUG_NAME, "lldbmi2");
+
+        configuration.setAttribute(IOmnetppLaunchConstants.ATTR_GDB_INIT, IOmnetppLaunchConstants.OPP_GDB_INIT_FILE);
     }
 
     protected static String getDefaultExeName(String workingDir) {
@@ -427,8 +441,8 @@ public class OmnetppLaunchUtils {
             if (!runFilter.isEmpty())
                 args += " -r " + runFilter;
             // expand the GDB init file path so we can use also variables there (if needed)
-            String expandedGdbInitFile = StringUtils.substituteVariables(config.getAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_GDB_INIT, ""));
-            newCfg.setAttribute(IOmnetppLaunchConstants.ATTR_DEBUGGER_GDB_INIT, expandedGdbInitFile);
+            String expandedGdbInitFile = StringUtils.substituteVariables(config.getAttribute(IOmnetppLaunchConstants.ATTR_GDB_INIT, ""));
+            newCfg.setAttribute(IOmnetppLaunchConstants.ATTR_GDB_INIT, expandedGdbInitFile);
 
             createGDBInitTmpFile(project);
         }
@@ -578,24 +592,33 @@ public class OmnetppLaunchUtils {
     }
 
     /**
-     * Detect if the active configuration of the CDT project is built with release mode omnetpp toolchain.
+     * Return "debug", "release" or whatever mode the CDT project has.
      * Returns null if the detection was unsuccessful.
      * @throws CoreException
      */
-    private static Boolean isReleaseModeCDTProject(IProject project) throws CoreException {
+    private static String getCdtProjectActiveMode(IProject project) throws CoreException {
         Assert.isTrue(project.hasNature(CDT_CC_NATURE_ID));
 
-        IConfiguration cfg = ManagedBuildManager.getBuildInfo(project).getDefaultConfiguration();
+        // Config IDs look like "org.omnetpp.cdt.gnu.config.release", "org.omnetpp.cdt.gnu.config.debug",
+        // or something; see IDs defined in the plugin.xml.
+        //
+        // NOTE: At many other places in the IDE we simply check the config's name (whether it contains the string "release" or "debug")
+        //
+        String CONFIGID_PREFIX = "org.omnetpp.cdt.gnu.config.";
+
+        IManagedBuildInfo buildInfo = ManagedBuildManager.getBuildInfo(project);
+        IConfiguration cfg = buildInfo == null ? null : buildInfo.getDefaultConfiguration();
         while (cfg != null) {
-            // compare with the release toolchain names. (they must match with the IDs defined in the plugin.xml)
-            if (cfg.getId().equals("org.omnetpp.cdt.gnu.config.release"))
-                return Boolean.TRUE;
-            // for a debug toolchain we must use opp_run (which is also built in debug mode)
-            if (cfg.getId().equals("org.omnetpp.cdt.gnu.config.debug"))
-                return Boolean.FALSE;
+            String configId = cfg.getId();
+            if (configId.startsWith(CONFIGID_PREFIX)) {
+                String rest = configId.substring(CONFIGID_PREFIX.length());
+                if (!rest.contains("."))
+                    return rest;
+            }
             cfg = cfg.getParent();
         }
-        // we cannot detect our own toolchain
+
+        // cannot detect
         return null;
     }
 
@@ -632,33 +655,29 @@ public class OmnetppLaunchUtils {
             throw new CoreException(new Status(IStatus.ERROR, LaunchPlugin.PLUGIN_ID, "Cannot launch simulation: the working directory path is not accessible."));
 
         IProject[] projects = ProjectUtils.getAllReferencedProjects(resource.getProject(), false, true);
-        Boolean commonReleaseMode = null;
-        boolean inconsistency = false;
-        String releaseProjects = "";
-        String debugProjects = "";
-        for (IProject project : projects)
+
+        Map<String,String> projectsByMode = new HashMap<>();
+        for (IProject project : projects) {
             if (project.hasNature(CDT_CC_NATURE_ID)) {
-                Boolean projectReleaseMode = isReleaseModeCDTProject(project);
-                if (projectReleaseMode != null && commonReleaseMode != null && projectReleaseMode != commonReleaseMode)
-                    inconsistency = true;
-
-                if (projectReleaseMode)
-                    releaseProjects += project.getName()+" ";
+                String mode = getCdtProjectActiveMode(project);
+                if (mode == null)
+                    mode = "unknown";
+                if (!projectsByMode.containsKey(mode))
+                    projectsByMode.put(mode, project.getName());
                 else
-                    debugProjects += project.getName()+" ";
-
-                if (projectReleaseMode != null)
-                    commonReleaseMode = projectReleaseMode;
+                    projectsByMode.put(mode, projectsByMode.get(mode) + " " + project.getName()); // append
             }
+        }
 
-        if (inconsistency)
-            throw new CoreException(new Status(IStatus.ERROR, LaunchPlugin.PLUGIN_ID,
-                    "Inconsistent project configurations: make sure required projects are "
-                    + "set to consistent build configurations."
-                    + "\n\nDebug mode: "+debugProjects
-                    + "\nRelease mode: "+releaseProjects));
+        boolean inconsistency = projectsByMode.size() != 1;
+        if (inconsistency) {
+            String report = projectsByMode.entrySet().stream().map(e -> e.getValue() + ": " + e.getKey()).collect(Collectors.joining("\n"));
+            throw new CoreException(new Status(IStatus.ERROR, LaunchPlugin.PLUGIN_ID, "Make sure to select consistent build configurations "
+                    + "across all involved projects, i.e. they should be all debug or all release. Current settings:\n\n" + report));
 
-        return commonReleaseMode == null ? false : commonReleaseMode;  // if mode not detected, use debug mode
+        }
+        boolean allProjectsAreRelease = projectsByMode.containsKey("release") && !inconsistency;
+        return allProjectsAreRelease; // if mode not detected or there are other modes, use debug mode
     }
 
     /**
@@ -910,6 +929,50 @@ public class OmnetppLaunchUtils {
         while ((lastRead = is.read(bytes)) > 0)
             stringBuffer.append(new String(bytes, 0, lastRead));
         return stringBuffer.toString();
+    }
+
+    private static void doPrintToConsole(ProcessConsole procConsole, String text, boolean isErrorMessage) {
+        try {
+            IOConsoleOutputStream stream = procConsole.getStream(
+                    isErrorMessage ? IDebugUIConstants.ID_STANDARD_ERROR_STREAM : IDebugUIConstants.ID_STANDARD_OUTPUT_STREAM);
+            stream.write(text);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Print something to the process's console output. Error message will be written in red
+     * and the console will be brought to focus.
+     */
+    public static void printToConsole(IProcess iprocess, String text, boolean isErrorMessage) {
+        IConsoleManager consoleManager = ConsolePlugin.getDefault().getConsoleManager();
+        ProcessConsoleManager procConsoleManager = DebugUIPlugin.getDefault().getProcessConsoleManager();
+        ProcessConsole processConsole1 = (ProcessConsole)procConsoleManager.getConsole(iprocess);
+
+        if (processConsole1 != null)
+            doPrintToConsole(processConsole1, text, isErrorMessage);
+        else {
+            // I believe there is a race condition here, because the consolesAdded
+            // notification might have fired after the getConsole call above,
+            // and before the addConsoleListener below. However, it is not
+            // considered critical enough to try to mitigate it in any way.
+            consoleManager.addConsoleListener(new IConsoleListener() {
+                @Override
+                public void consolesRemoved(IConsole[] consoles) {
+                }
+
+                @Override
+                public void consolesAdded(IConsole[] consoles) {
+                    ProcessConsole processConsole2 = (ProcessConsole)procConsoleManager.getConsole(iprocess);
+                    for (IConsole c : consoles)
+                        if (c == processConsole2) {
+                            doPrintToConsole(processConsole2, text, isErrorMessage);
+                            consoleManager.removeConsoleListener(this);
+                        }
+                }
+            });
+        }
     }
 
     /**

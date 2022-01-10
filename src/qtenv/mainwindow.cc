@@ -69,7 +69,7 @@ using namespace omnetpp::common;
 namespace omnetpp {
 namespace qtenv {
 
-QString MainWindow::aboutText = "OMNeT++/OMNEST\nDiscrete Event Simulation Framework\n\n(C) 2015-2017 OpenSim Ltd.\n\
+QString MainWindow::aboutText = "OMNeT++/OMNEST\nDiscrete Event Simulation Framework\n\n(C) 2015-2021 OpenSim Ltd.\n\
         Release: " + QString(OMNETPP_RELEASE) + ", build: " + OMNETPP_BUILDID + "\n" + OMNETPP_EDITION + "\n\n"
         "Qtenv was compiled with Qt " + QT_VERSION_STR + ", is running with Qt " + qVersion() + "\n\n"
         "NO WARRANTY -- see license for details.";
@@ -510,6 +510,26 @@ void MainWindow::runSimulation(RunMode runMode)
     }
 }
 
+void MainWindow::stopSimulation()
+{
+    // implements Simulate|Stop
+    if (env->getSimulationState() == Qtenv::SIM_RUNNING || env->getSimulationState() == Qtenv::SIM_BUSY) {
+        // This just *asks* the simulation to stop, causing it to break from the loop in env->runSimulation().
+        // setGuiForRunmode(...NOT_RUNNING) will be called after env->runSimulation() has returned.
+        env->setStopSimulationFlag();
+    }
+
+    closeStopDialog();
+}
+
+void MainWindow::stopOrRunSimulation(RunMode runMode)
+{
+    if (env->getSimulationRunMode() == runMode)
+        stopSimulation();
+    else
+        runSimulation(runMode);
+}
+
 // newRun
 void MainWindow::on_actionSetUpConfiguration_triggered()
 {
@@ -548,25 +568,6 @@ void MainWindow::on_actionSetUpConfiguration_triggered()
         reflectRecordEventlog();
     }
 #endif
-}
-
-// stopSimulation
-void MainWindow::on_actionStop_triggered()
-{
-    // implements Simulate|Stop
-    if (env->getSimulationState() == Qtenv::SIM_RUNNING || env->getSimulationState() == Qtenv::SIM_BUSY) {
-        // "opp_stopsimulation" just *asks* the simulation to stop, causing it to return
-        // from the "opp_run" command.
-        // "setGuiForRunmode notrunning" will be called after "opp_run" has returned.
-        env->setStopSimulationFlag();
-    }
-
-    closeStopDialog();
-
-    // this proc doubles as "stop layouting", when in graphical module inspectors
-    // TODO
-    // global stoplayouting
-    // set stoplayouting 1
 }
 
 // runUntil

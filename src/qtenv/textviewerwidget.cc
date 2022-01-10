@@ -273,27 +273,40 @@ void TextViewerWidget::find(QString text, FindOptions options)
     int offset = backwards ? getSelectionStart().column - 1 : getSelectionEnd().column;
     int line = backwards ? getSelectionStart().line : getSelectionEnd().line;
 
+    offset = mapColumnToFormatted(content->getLineText(line).data(), offset);
+
     for (  /* nothing */; (line >= 0) && (line < content->getLineCount()); line += (backwards ? -1 : 1)) {
         int index = -1;
 
+        QString lineText = content->getLineText(line);
+        QString strippedText = stripFormatting(lineText);
+
         if (backwards) {
-            index = re.lastIndexIn(content->getLineText(line), offset);
+            index = re.lastIndexIn(strippedText, offset);
             offset = -1;  // was needed only for the first searched line
         }
         else {
-            index = re.indexIn(content->getLineText(line), offset);
+            index = re.indexIn(strippedText, offset);
             offset = 0;  // was needed only for the first searched line
         }
 
         if (index >= 0) {
-            setSelection(line, index, line, index + re.matchedLength());
+            int endIndex = index + re.matchedLength();
+
+            index = mapColumnToUnformatted(lineText.data(), index);
+            endIndex = mapColumnToUnformatted(lineText.data(), endIndex);
+
+            setSelection(line, index, line, endIndex);
             found = true;  // yay!
             break;  // ouch.
         }
     }
 
     if (found) {
-        revealCaret();
+        int horizontalMargin = viewport()->width() / 5;
+        int verticalMargin = viewport()->height() / 5;
+        // 20% on the top and left, 40% on the bottom and right
+        revealCaret(QMargins(horizontalMargin, verticalMargin, horizontalMargin * 2, verticalMargin * 2));
     }
     else {
         clearSelection();
@@ -1343,7 +1356,7 @@ void TextViewerWidget::updateScrollbars()
     // So with any combination of followContentEnd's value, both scrollbars
     // being visible or not, etc, invoking this function more than once
     // with no other state changing should give the exact same result.
-    // Note that it can happen that we are showing a toolbar that is
+    // Note that it can happen that we are showing a scrollbar that is
     // not scrollable at all, but this can not be avoided, deal with it.
 
     // Counts how many times this function is on the stack.
@@ -1458,7 +1471,7 @@ void TextViewerWidget::handleContentChange()
     contentChangedFlag = false;
 }
 
-void TextViewerWidget::revealCaret()
+void TextViewerWidget::revealCaret(const QMargins& margins)
 {
     int topPixel = caretLineIndex * lineSpacing;
     int bottomPixel = topPixel + lineSpacing - 1;
@@ -1467,11 +1480,13 @@ void TextViewerWidget::revealCaret()
 
     int val = vsb->value();
 
-    if (val < bottomPixel - viewport()->height())
-        val = bottomPixel - viewport()->height();
+    int minVal = bottomPixel + margins.bottom() - viewport()->height();
+    if (val < minVal)
+        val = minVal; // have to scroll down
 
-    if (val > topPixel)
-        val = topPixel;
+    int maxVal = topPixel - margins.top();
+    if (val > maxVal)
+        val = maxVal; // have to scroll up
 
     vsb->setValue(val);
 
@@ -1482,11 +1497,13 @@ void TextViewerWidget::revealCaret()
 
     val = hsb->value();
 
-    if (val < caretX - viewport()->width() + 1)
-        val = caretX - viewport()->width() + 1;
+    minVal = caretX + margins.right() - viewport()->width() + 1;
+    if (val < minVal)
+        val = minVal; // have to scroll to the right
 
-    if (val > caretX)
-        val = caretX;
+    maxVal = caretX - margins.left();
+    if (val > maxVal)
+        val = maxVal; // have to scroll to the left
 
     hsb->setValue(val);
 }

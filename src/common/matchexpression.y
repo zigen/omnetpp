@@ -18,11 +18,12 @@
 %expect 1
 
 /* Tokens */
-%token STRINGLITERAL
+%token STRINGLITERAL 
+%token MATCHES
 %token OR_ AND_ NOT_   /* note: cannot use %left/%right because of implicit "or" operator */
 
 // for bison 3.x
-%pure-parser
+%define api.pure
 %lex-param {void *statePtr}
 %parse-param {void *statePtr}
 
@@ -35,6 +36,7 @@
 
 #define YYDEBUG 1           /* allow debugging */
 #define YYDEBUGGING_ON 0    /* turn on/off debugging */
+#define YYFPRINTF fprintf
 
 #if YYDEBUG != 0
 #define YYERROR_VERBOSE     /* more detailed error messages */
@@ -116,6 +118,15 @@ fieldpattern
                     delete [] $1;
                 }
         | STRINGLITERAL '(' STRINGLITERAL ')'
+                {
+                    MatchExpressionParserState &state = *(MatchExpressionParserState*)statePtr;
+                    PatternMatcher *p = new PatternMatcher();
+                    p->setPattern($3, state.dottedpath, state.fullstring, state.casesensitive);
+                    state.elemsp->push_back(MatchExpression::Elem(p, $1));
+                    delete [] $1;
+                    delete [] $3;
+                }
+        | STRINGLITERAL MATCHES STRINGLITERAL
                 {
                     MatchExpressionParserState &state = *(MatchExpressionParserState*)statePtr;
                     PatternMatcher *p = new PatternMatcher();
