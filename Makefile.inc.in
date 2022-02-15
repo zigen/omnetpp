@@ -249,8 +249,10 @@ index.html: $O/$(TARGET)
 	cp /root/qtbase/qtbase/plugins/platforms/wasm_shell.html $O/index.html
 	cp /root/qtbase/qtbase/plugins/platforms/qtloader.js $O/qtloader.js
 	cp /root/qtbase/qtbase/plugins/platforms/qtlogo.svg $O/qtlogo.svg
+	cp /root/node_exec_template.js $O/$(TARGET:.js=)
 	sed -i 's/@APPNAME@/$(basename $(TARGET))/' $O/index.html
 	sed -i 's/@APPNAME@/$(basename $(TARGET))/' $O/qtloader.js
+	sed -i 's/@APPNAME@/$(basename $(TARGET))/' $O/$(TARGET:.js=)
 
 %.js: index.html
 
@@ -297,7 +299,7 @@ endif
 ifneq ($(EMSCRIPTEN),) 
   QTENV_LIBS = -L/root/qtbase/qtbase/lib -L/root/qtbase/qtbase/plugins/platforms -L/root/qtbase/qtbase/plugins/imageformats/ -lqwasm -lQt5Gui -lQt5Core -lQt5Widgets -lQt5PrintSupport -lQt5OpenGL -lQt5EventDispatcherSupport -lQt5FontDatabaseSupport -lqtfreetype -lqgif  -lqtpcre2 -lqtlibpng -lqtharfbuzz -lqjpeg -lqico -loppqtenv$D -loppenvir$D -lopplayout$D
   QTENV_LDFLAGS = 
-  ALL_ENV_LIBS = $(QTENV_LIBS)
+  ALL_ENV_LIBS = $(QTENV_LIBS) -loppcmdenv$D
 endif
 
 #
