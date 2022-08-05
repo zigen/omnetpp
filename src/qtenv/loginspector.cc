@@ -41,6 +41,8 @@
 #include "messageprintertagsdialog.h"
 #include "textviewerproviders.h"
 
+#include <emscripten.h>
+
 using namespace omnetpp::common;
 using namespace omnetpp::internal;
 
@@ -314,7 +316,15 @@ void LogInspector::refresh()
 void LogInspector::onFindButton()
 {
     auto dialog = new LogFindDialog(this, lastFindText, lastFindOptions);
-    if (dialog->exec() == QDialog::Accepted) {
+    bool accepted = false;
+    bool rejected = false;
+    connect(dialog, &QDialog::accepted, [&](){ accepted = true; });
+    connect(dialog, &QDialog::rejected, [&](){ rejected = true; });
+    dialog->open();
+    while(!accepted || !rejected) {
+        emscripten_sleep(10);
+    }
+    if (accepted) {
         lastFindText = dialog->getText();
         lastFindOptions = dialog->getOptions();
         if (!lastFindText.isEmpty())
@@ -327,7 +337,15 @@ void LogInspector::onFilterButton()
 {
     if (cModule *module = dynamic_cast<cModule *>(object)) {
         LogFilterDialog dialog(this, module, excludedModuleIds);
-        if (dialog.exec() == QDialog::Accepted) {
+        bool accepted = false;
+        bool rejected = false;
+        connect(&dialog, &QDialog::accepted, [&](){ accepted = true; });
+        connect(&dialog, &QDialog::rejected, [&](){ rejected = true; });
+        dialog.open();
+        while(!accepted || !rejected) {
+           emscripten_sleep(10);
+        }
+        if (accepted) {
             excludedModuleIds = dialog.getExcludedModuleIds();
             contentProvider->setExcludedModuleIds(excludedModuleIds);
             saveExcludedModules();
@@ -338,7 +356,15 @@ void LogInspector::onFilterButton()
 void LogInspector::onMessagePrinterTagsButton()
 {
     MessagePrinterTagsDialog dialog(this, gatherAllMessagePrinterTags(), &messagePrinterOptions);
-    if (dialog.exec() == QDialog::Accepted) {
+    bool accepted = false;
+    bool rejected = false;
+    connect(&dialog, &QDialog::accepted, [&](){ accepted = true; });
+    connect(&dialog, &QDialog::rejected, [&](){ rejected = true; });
+    dialog.open();
+    while(!accepted || !rejected) {
+        emscripten_sleep(10);
+    }
+    if (accepted) {
         messagePrinterOptions.enabledTags = dialog.getEnabledTags();
         contentProvider->refresh();
         saveMessagePrinterOptions();
@@ -390,7 +416,10 @@ void LogInspector::onRightClicked(QPoint globalPos, int lineIndex, int column)
             groupDigitsAction->setChecked(getQtenv()->opt->messageLogDigitGrouping);
         }
 
-        menu->exec(globalPos);
+        menu->popup(globalPos);
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);
     }
 }
 

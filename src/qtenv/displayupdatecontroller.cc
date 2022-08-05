@@ -30,6 +30,8 @@
 #include "common/fileutil.h"
 #include "envir/speedometer.h"
 
+#include <emscripten.h>
+
 #define emit
 
 namespace omnetpp {
@@ -579,6 +581,7 @@ void DisplayUpdateController::renderFrame(bool record)
     qtenv->refreshInspectors();
 
     QApplication::processEvents();
+    emscripten_sleep(-1);
 
     lastGuiUpdateAt = now;
     lastFrameAt = now;

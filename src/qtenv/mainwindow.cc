@@ -57,6 +57,8 @@
 #include "videorecordingdialog.h"
 #include "qtutil.h"
 
+#include <emscripten.h>
+
 #define emit
 
 using namespace omnetpp::common;
@@ -242,8 +244,10 @@ void MainWindow::onSimTimeLabelContextMenuRequested(QPoint pos)
     action->setCheckable(true);
     action->setChecked(simTimeUnits);
 
-    menu->exec(simTimeLabel->mapToGlobal(pos));
-
+    menu->popup(simTimeLabel->mapToGlobal(pos));
+    bool triggered = false;
+    connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+    while(!triggered) emscripten_sleep(10);  
     delete menu;
 }
 
@@ -314,8 +318,10 @@ void MainWindow::onEventNumLabelContextMenuRequested(QPoint pos)
             action->setChecked(true);
     }
 
-    menu->exec(eventNumLabel->mapToGlobal(pos));
-
+    menu->popup(eventNumLabel->mapToGlobal(pos));
+    bool triggered = false;
+    connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+    while(!triggered) emscripten_sleep(10);  
     delete menu;
 }
 
@@ -556,20 +562,19 @@ void MainWindow::on_actionSetUpConfiguration_triggered()
 
     cConfigurationEx *configEx = getQtenv()->getConfigEx();
 
-    // No filter used for subsequent run selections.
-    // Note that if invoked this way, we pretty much avoid all possibility of an exception,
-    // because the run filter is constant, and the config name is the current one, so it must exist.
-    // This, and the fact that Qtenv::displayException is protected, along with Qt not supporting
-    // throwing exceptions from slots, justifies the omission of a try-catch block.
-    // It would only be an ASSERT(false) or something similar anyway.
-    RunSelectionDialog dialog(configEx, configEx->getActiveConfigName(), "", this);
-    if (dialog.exec()) {
-        busy("Setting up new run...");
-        emit setNewNetwork();
-        env->newRun(dialog.getConfigName().c_str(), dialog.getRunNumber());
-        busy();
-        reflectConfigOnUi();
+    auto *dialog = new RunSelectionDialog(configEx, configEx->getActiveConfigName(), "", this);
+    bool accepted = false;
+    connect(dialog, &RunSelectionDialog::accepted, [&](){ accepted = true; });
+    dialog->open();
+    while(!accepted) {
+        emscripten_sleep(10);
     }
+    busy("Setting up new run...");
+    emit setNewNetwork();
+    env->newRun(dialog->getConfigName().c_str(), dialog->getRunNumber());
+    busy();
+    // reflectRecordEventlog();
+    return;
 }
 
 // runUntil
@@ -1191,7 +1196,10 @@ void MainWindow::on_actionAbout_OMNeT_Qtenv_triggered()
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok);
     connect(buttonBox, SIGNAL(accepted()), about, SLOT(accept()));
     layout->addWidget(buttonBox);
-    about->exec();
+    about->open();
+    bool triggered = false;
+    connect(about, &QDialog::accepted, [&](){ triggered = true; });
+    while(!triggered) emscripten_sleep(10);
 
     delete layout;
     delete frameLayout;
@@ -1418,7 +1426,12 @@ void MainWindow::on_actionRecordVideo_toggled(bool checked)
 
         VideoRecordingDialog dialog(this, configRun);
 
-        dialog.exec();
+        bool accepted = false;
+        connect(&dialog, &QDialog::accepted, [&]() { accepted = true; });
+        dialog.open();
+        while(!accepted) {
+            emscripten_sleep(10);
+        }
 
         if (dialog.result() == QDialog::Accepted) {
             setFixedSize(width() / 2 * 2, height() / 2 * 2);

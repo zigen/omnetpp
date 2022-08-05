@@ -31,6 +31,8 @@
 #include "genericobjectinspector.h"
 #include "mainwindow.h"
 
+#include <emscripten.h>
+
 namespace omnetpp {
 using namespace common;
 namespace qtenv {
@@ -298,7 +300,12 @@ void InspectorUtil::setClipboard(QString str)
 void InspectorUtil::preferencesDialog(eTab defaultPage)
 {
     PreferencesDialog *prefDialog = new PreferencesDialog(defaultPage, getQtenv()->getMainWindow());
-    prefDialog->exec();
+    bool accepted = false;
+    GenericObjectTreeModel::connect(prefDialog, &PreferencesDialog::accepted, [&](){ accepted = true; });
+    prefDialog->open();
+    while(!accepted) {
+        emscripten_sleep(10);
+    }
     delete prefDialog;
 }
 

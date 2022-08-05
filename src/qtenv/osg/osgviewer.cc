@@ -42,6 +42,7 @@
 #include <osg/Depth>
 #include <osg/DeleteHandler>
 #include <osg/Version>
+#include <emscripten.h>
 
 #define emit
 
@@ -851,7 +852,12 @@ void OsgViewer::mouseReleaseEvent(QMouseEvent *event)
         }
 
         menu->addMenu(createCameraManipulatorMenu());
-        menu->exec(event->globalPos());
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; }); 
+        menu->popup(event->globalPos());
+        while(!triggered) {
+            emscripten_sleep(10);
+        }
     }
 }
 

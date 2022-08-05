@@ -26,6 +26,7 @@
 #include "qtenv.h"
 
 #include <QtCore/QDebug>
+#include <emscripten.h>
 
 namespace omnetpp {
 namespace qtenv {
@@ -90,7 +91,10 @@ void FileEditor::onCustomContextMenuRequested(const QPoint& pos)
         contextMenu->addAction("&Select All", ui->plainTextEdit, SLOT(selectAll()))->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_A));
     }
 
-    contextMenu->exec(mapToGlobal(pos) + ui->plainTextEdit->pos());
+    contextMenu->popup(mapToGlobal(pos) + ui->plainTextEdit->pos());
+    bool triggered = false;
+    connect(contextMenu, &QMenu::triggered, [&](){ triggered = true; });
+    while(!triggered) emscripten_sleep(10);  
 }
 
 void FileEditor::addToolBar()
@@ -156,7 +160,12 @@ void FileEditor::find()
         getQtenv()->getPref("editor-last-text").value<QString>() : ui->plainTextEdit->textCursor().selectedText();
 
     LogFindDialog findDialog(this, lastText, static_cast<TextViewerWidget::FindOptions>(findOptions));
-    findDialog.exec();
+    bool accepted = false;
+    connect(&findDialog, &LogFindDialog::accepted, [&](){ accepted = true; });
+    findDialog.open();
+    while(!accepted) {
+        emscripten_sleep(10);
+    }
 
     findOptions = findDialog.getOptions();
     getQtenv()->setPref("editor-case-sensitive", bool(findOptions & TextViewerWidget::FIND_CASE_SENSITIVE));

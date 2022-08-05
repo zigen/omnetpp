@@ -36,6 +36,8 @@
 #include <QtCore/QDebug>
 #include <QtWidgets/QScrollBar>
 
+#include <emscripten.h>
+
 #define emit
 
 using namespace omnetpp::common;
@@ -195,7 +197,11 @@ void CanvasInspector::onContextMenuRequested(QContextMenuEvent *event)
         menu->addAction("Zoom In", this, SLOT(zoomIn()), QKeySequence(Qt::CTRL + Qt::Key_Plus));
         menu->addAction("Zoom Out", this, SLOT(zoomOut()), QKeySequence(Qt::CTRL + Qt::Key_Minus));
 
-        menu->exec(event->globalPos());
+        menu->popup(event->globalPos());
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);
+
         delete menu;
     }
 }

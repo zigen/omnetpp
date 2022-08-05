@@ -26,6 +26,8 @@
 #include "histograminspector.h"
 #include "histograminspectorconfigdialog.h"
 
+#include <emscripten.h>
+
 static const double X_RANGE = 1;  // use when minX>=maxX
 static const double Y_RANGE = 1;  // use when minY>=maxY
 static const QColor BACKGROUND_COLOR("#E2E8FA");
@@ -303,7 +305,12 @@ void HistogramInspector::onCustomContextMenuRequested(QPoint pos)
 
     // if mouse pos isn't contained by viewport, then context menu will appear in view (10, 10) pos
     QPoint eventPos = view->viewport()->rect().contains(pos) ? pos : QPoint(10, 10);
-    menu->exec(view->mapToGlobal(eventPos));
+    bool accepted = false;
+    connect(menu, &QMenu::triggered, [&]() { accepted = true; });
+    menu->popup(view->mapToGlobal(eventPos));
+    while(!accepted) {
+        emscripten_sleep(10);
+    }
 }
 
 void HistogramInspector::onShowCounts()

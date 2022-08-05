@@ -40,6 +40,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QApplication>
 #include <QtGui/QClipboard>
+#include <emscripten.h>
 
 #define emit
 
@@ -360,7 +361,10 @@ void GenericObjectInspector::createContextMenu(QPoint pos)
         menu->addAction(copyLineAction);
         menu->addAction(copyLineHighlightedAction);
 
-        menu->exec(treeView->mapToGlobal(pos));
+        menu->popup(treeView->mapToGlobal(pos));
+        bool triggered = false;
+        connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+        while(!triggered) emscripten_sleep(10);      
         delete menu;
     }
 }

@@ -51,6 +51,8 @@
 #include "layersdialog.h"
 #include "messageanimator.h"
 
+#include <emscripten.h>
+
 using namespace omnetpp::common;
 
 #define emit
@@ -727,7 +729,10 @@ void ModuleInspector::createContextMenu(const std::vector<cObject *>& objects, c
     menu->addAction("Export to PDF...", canvasViewer, SLOT(exportToPdf()));
     menu->addAction("Print...", canvasViewer, SLOT(print()));
 
-    menu->exec(globalPos);
+    menu->popup(globalPos, nullptr);
+    bool triggered = false;
+    connect(menu, &QMenu::triggered, [&](){ triggered = true; });
+    while(!triggered) emscripten_sleep(10);  
     delete menu;
 }
 

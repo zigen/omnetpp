@@ -111,6 +111,15 @@ void initFontsResource()
     Q_INIT_RESOURCE(fonts);
 }
 
+#include <emscripten.h>
+#include <QtCore/QtPlugin>
+Q_IMPORT_PLUGIN(QWasmIntegrationPlugin)
+Q_IMPORT_PLUGIN(QGifPlugin)
+Q_IMPORT_PLUGIN(QICOPlugin)
+Q_IMPORT_PLUGIN(QJpegPlugin)
+Q_IMPORT_PLUGIN(QSvgPlugin)
+Q_IMPORT_PLUGIN(QSvgIconPlugin)
+
 namespace omnetpp {
 
 namespace qtenv {
@@ -844,7 +853,6 @@ void Qtenv::runSimulation(RunMode mode, simtime_t until_time, eventnumber_t unti
     doNextEventInStep = getSimulation()->isTrapOnNextEventRequested() || displayUpdateController->rightBeforeEvent();
 
     updateStatusDisplay();
-    QApplication::processEvents();
 
     startClock();
     notifyLifecycleListeners(LF_ON_SIMULATION_RESUME);
@@ -1708,25 +1716,16 @@ void Qtenv::initialSetUpConfiguration()
     }
     else {
         try {
-            // defaultConfig and runFilter are what were specified in either the omnetpp.ini file or as a command line argument
-            RunSelectionDialog dialog(conf, opt->defaultConfig, opt->runFilter, mainWindow);
+            auto *dialog = new RunSelectionDialog(conf, opt->defaultConfig, opt->runFilter, mainWindow);
+            bool accepted = false;
+            connect(dialog, &RunSelectionDialog::accepted, [&](){ accepted = true; });
+            dialog->open();
+            while(!accepted) {
+                emscripten_sleep(10);
+            }
 
-#ifdef QT_OS_MAC
-            // Makes the Apple Menu work on Mac (together with TransformProcessType) right
-            // after launch even if there is no need to actually pick a configuration.
-            // Even if the dialog doesn't really appear on the screen (in fact I hope it
-            // doesn't, that would cause flickering), if shown first, it will do some
-            // magic with window focus passing when destroyed, which is similar to
-            // switching apps, which then makes the global menu work for some reason.
-            dialog.show();
-#endif
-
-            // only show if needed, but if cancelled, stop.
-            if (dialog.needsShowing() && !dialog.exec())
-                return;
-
-            config = dialog.getConfigName();
-            run = dialog.getRunNumber();
+            config = dialog->getConfigName();
+            run = dialog->getRunNumber();
         }
         catch (std::exception& e) {
             // if nonexistent config was given as argument or the run filter couldn't be applied, etc...
@@ -1873,7 +1872,12 @@ bool Qtenv::ensureDebugger(cRuntimeError *error)
     QMessageBox::ButtonRole clickedRole = QMessageBox::AcceptRole;
 
     if (!message.isEmpty()) {
-        messageBox.exec();
+        bool clicked = false;
+        connect(&messageBox, &QMessageBox::buttonClicked, [&]() { clicked = true; });
+        messageBox.open();
+        while(!clicked) {
+            emscripten_sleep(10);
+        }
         clickedRole = messageBox.buttonRole(messageBox.clickedButton());
     }
 
@@ -2468,7 +2472,16 @@ bool Qtenv::inputDialog(const char *title, const char *prompt,
 
     dialog->setLayout(layout);
 
-    if (dialog->exec() == QDialog::Rejected)
+    bool accepted = false;
+    bool rejected = false;
+    connect(dialog, &QDialog::accepted, [&](){ accepted = true; });
+    connect(dialog, &QDialog::rejected, [&](){ rejected = true; });
+    dialog->open();
+    while(!accepted || !rejected) {
+        emscripten_sleep(10);
+     }
+
+    if (rejected)
         return false;
 
     outResult = edit->text().toStdString();
