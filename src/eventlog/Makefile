@@ -65,7 +65,7 @@ $O/%.o: %.cc $(GENERATED_SOURCES) $(CONFIGFILE) $(COPTS_FILE)
 #
 # Targets
 #
-all : $(TARGET_LIB_FILES) $(TARGET_EXE_FILES)
+all : $(TARGET_LIB_FILES)
 
 ifeq ($(SHARED_LIBS),yes)
 # dynamically linked library (on all platforms except Windows)

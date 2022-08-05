@@ -17,18 +17,7 @@ L=$(OMNETPP_LIB_DIR)
 #
 all: $(CONFIGFILE)
 	$(Q)echo "#!/bin/sh" >$(OMNETPP_BIN_DIR)/opp_configfilepath && echo '(cd $$(dirname $$0)/.. && echo $$(pwd)/Makefile.inc)' >>$(OMNETPP_BIN_DIR)/opp_configfilepath
-	$(Q)cp opp_makemake $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_featuretool $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_charttool $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_test $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_fingerprinttest $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_shlib_postprocess $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_runall $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_neddoc $(OMNETPP_BIN_DIR)
-	$(Q)cp opp_ide $(OMNETPP_BIN_DIR)
-	$(Q)cp omnetpp $(OMNETPP_BIN_DIR)
-	$(Q)cp omnest $(OMNETPP_BIN_DIR)
-	$(Q)chmod +x $(OMNETPP_BIN_DIR)/opp_makemake $(OMNETPP_BIN_DIR)/opp_test $(OMNETPP_BIN_DIR)/opp_fingerprinttest $(OMNETPP_BIN_DIR)/opp_configfilepath $(OMNETPP_BIN_DIR)/opp_shlib_postprocess $(OMNETPP_BIN_DIR)/opp_runall $(OMNETPP_BIN_DIR)/opp_neddoc $(OMNETPP_BIN_DIR)/opp_ide $(OMNETPP_BIN_DIR)/omnetpp $(OMNETPP_BIN_DIR)/omnest
+	$(Q)chmod +x $(OMNETPP_BIN_DIR)/opp_configfilepath 
 
 clean:
 	$(qecho) Cleaning utils
